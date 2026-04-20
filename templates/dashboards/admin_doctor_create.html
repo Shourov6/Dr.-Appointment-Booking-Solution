@@ -238,22 +238,25 @@ function buildPeriodOptions() {
     return '<option value="">--</option><option value="AM">AM</option><option value="PM">PM</option>';
 }
 
-function buildTimeSelector(hiddenId, hiddenName, keyPrefix) {
+function buildTimeSelector(hiddenId, hiddenName, keyPrefix, hospitalIndex = null, dayIndex = null) {
     const hourId = `${keyPrefix}_hour`;
     const minuteId = `${keyPrefix}_minute`;
     const periodId = `${keyPrefix}_period`;
+    const autoConfirmSnippet = (hospitalIndex !== null && dayIndex !== null)
+        ? `; autoConfirmDay(${hospitalIndex}, ${dayIndex})`
+        : '';
 
     return `
         <input type="hidden" id="${hiddenId}" name="${hiddenName}" value="">
         <div class="d-flex gap-1 align-items-center time-select-wrap">
-            <select class="form-select form-select-sm time-part-select" id="${hourId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')">
+            <select class="form-select form-select-sm time-part-select" id="${hourId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')${autoConfirmSnippet}">
                 ${buildSelectOptions(1, 12, true)}
             </select>
             <span class="small text-muted">:</span>
-            <select class="form-select form-select-sm time-part-select" id="${minuteId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')">
+            <select class="form-select form-select-sm time-part-select" id="${minuteId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')${autoConfirmSnippet}">
                 ${buildSelectOptions(0, 59, true)}
             </select>
-            <select class="form-select form-select-sm time-period-select" id="${periodId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')">
+            <select class="form-select form-select-sm time-period-select" id="${periodId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')${autoConfirmSnippet}">
                 ${buildPeriodOptions()}
             </select>
         </div>
@@ -271,6 +274,38 @@ function syncTimeValue(hiddenId, hourId, minuteId, periodId) {
     }
 
     hidden.value = (hour && minute && period) ? `${hour}:${minute} ${period}` : '';
+}
+
+function setDoneState(hospitalIndex, dayIndex, confirmed) {
+    const doneInput = document.getElementById(`day_done_${hospitalIndex}_${dayIndex}`);
+    const btn = document.getElementById(`done_btn_${hospitalIndex}_${dayIndex}`);
+    if (!doneInput || !btn) {
+        return;
+    }
+
+    doneInput.value = confirmed ? '1' : '0';
+    btn.textContent = confirmed ? 'Done ✓' : 'Done';
+    btn.classList.toggle('btn-success', confirmed);
+    btn.classList.toggle('text-white', confirmed);
+    btn.classList.toggle('btn-outline-success', !confirmed);
+}
+
+function autoConfirmDay(hospitalIndex, dayIndex) {
+    const checkbox = document.getElementById(`day_${hospitalIndex}_${dayIndex}`);
+    const start = document.getElementById(`start_time_${hospitalIndex}_${dayIndex}`);
+    const end = document.getElementById(`end_time_${hospitalIndex}_${dayIndex}`);
+
+    if (!checkbox || !start || !end) {
+        return;
+    }
+
+    if (!checkbox.checked) {
+        setDoneState(hospitalIndex, dayIndex, false);
+        return;
+    }
+
+    const isComplete = Boolean(start.value && end.value);
+    setDoneState(hospitalIndex, dayIndex, isComplete);
 }
 
 function renderHospitalSchedules() {
@@ -324,17 +359,17 @@ function renderHospitalSchedules() {
                     <div class="col-12 col-md-3">
                         <label class="form-label small fw-bold mb-1" title="${day.fullName}">${day.name}</label>
                         <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="day_${i}_${day.index}" name="day_${i}_${day.index}" value="on">
+                            <input type="checkbox" class="form-check-input" id="day_${i}_${day.index}" name="day_${i}_${day.index}" value="on" onchange="autoConfirmDay(${i}, ${day.index})">
                             <label class="form-check-label small" for="day_${i}_${day.index}">Working</label>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label small fw-bold mb-1">Start</label>
-                        ${buildTimeSelector(`start_time_${i}_${day.index}`, `start_time_${i}_${day.index}`, `start_${i}_${day.index}`)}
+                        ${buildTimeSelector(`start_time_${i}_${day.index}`, `start_time_${i}_${day.index}`, `start_${i}_${day.index}`, i, day.index)}
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label small fw-bold mb-1">End</label>
-                        ${buildTimeSelector(`end_time_${i}_${day.index}`, `end_time_${i}_${day.index}`, `end_${i}_${day.index}`)}
+                        ${buildTimeSelector(`end_time_${i}_${day.index}`, `end_time_${i}_${day.index}`, `end_${i}_${day.index}`, i, day.index)}
                     </div>
                     <div class="col-12 col-md-3 d-grid">
                         <label class="form-label small fw-bold mb-1">Confirm</label>
@@ -416,34 +451,18 @@ function markDayDone(hospitalIndex, dayIndex) {
     const checkbox = document.getElementById(`day_${hospitalIndex}_${dayIndex}`);
     const start = document.getElementById(`start_time_${hospitalIndex}_${dayIndex}`);
     const end = document.getElementById(`end_time_${hospitalIndex}_${dayIndex}`);
-    const doneInput = document.getElementById(`day_done_${hospitalIndex}_${dayIndex}`);
-    const btn = document.getElementById(`done_btn_${hospitalIndex}_${dayIndex}`);
 
-    if (!checkbox || !start || !end || !doneInput || !btn) {
+    if (!checkbox || !start || !end) {
         return;
     }
 
     if (!checkbox.checked || !start.value || !end.value) {
-        btn.classList.remove('btn-success', 'text-white');
-        btn.classList.add('btn-outline-success');
-        btn.textContent = 'Done';
-        doneInput.value = '0';
+        setDoneState(hospitalIndex, dayIndex, false);
         alert('Please check Working and set both Start and End times first.');
         return;
     }
 
-    const isConfirmed = doneInput.value === '1';
-    if (isConfirmed) {
-        doneInput.value = '0';
-        btn.textContent = 'Done';
-        btn.classList.remove('btn-success', 'text-white');
-        btn.classList.add('btn-outline-success');
-    } else {
-        doneInput.value = '1';
-        btn.textContent = 'Done ✓';
-        btn.classList.remove('btn-outline-success');
-        btn.classList.add('btn-success', 'text-white');
-    }
+    setDoneState(hospitalIndex, dayIndex, true);
 }
 
 function previewPhoto(event) {
@@ -482,6 +501,42 @@ function previewPhoto(event) {
 
 document.addEventListener('DOMContentLoaded', function () {
     renderHospitalSchedules();
+
+    const form = document.getElementById('addDoctorForm');
+    if (!form) {
+        return;
+    }
+
+    form.addEventListener('submit', function (event) {
+        const numHospitals = parseInt(document.getElementById('numHospitals')?.value || '1', 10) || 1;
+
+        for (let i = 0; i < numHospitals; i++) {
+            for (const day of DAYS_OF_WEEK) {
+                autoConfirmDay(i, day.index);
+
+                const checkbox = document.getElementById(`day_${i}_${day.index}`);
+                const start = document.getElementById(`start_time_${i}_${day.index}`);
+                const end = document.getElementById(`end_time_${i}_${day.index}`);
+                const doneInput = document.getElementById(`day_done_${i}_${day.index}`);
+
+                if (!checkbox || !checkbox.checked) {
+                    continue;
+                }
+
+                if (!start?.value || !end?.value) {
+                    event.preventDefault();
+                    alert(`Please set Start and End for ${day.fullName} in Hospital #${i + 1}.`);
+                    return;
+                }
+
+                if (!doneInput || doneInput.value !== '1') {
+                    event.preventDefault();
+                    alert(`Please confirm ${day.fullName} by clicking Done in Hospital #${i + 1}.`);
+                    return;
+                }
+            }
+        }
+    });
 });
 </script>
 {% endblock %}

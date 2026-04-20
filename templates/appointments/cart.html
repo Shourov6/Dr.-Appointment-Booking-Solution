@@ -30,8 +30,8 @@
                                 <i class="bi bi-calendar me-1"></i>{{ item.availability.date|date:"D, M d, Y" }}
                                 <i class="bi bi-clock ms-2 me-1"></i>{{ item.availability.time_slot }}
                             </p>
-                            <span class="badge {% if item.consultation_type == 'online' %}bg-info{% else %}bg-success{% endif %}">
-                                {{ item.get_consultation_type_display }}
+                            <span class="badge bg-success">
+                                In-Person
                             </span>
                         </div>
                         

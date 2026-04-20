@@ -93,17 +93,16 @@
                                 <i class="bi bi-search"></i>
                             </span>
                             <input type="text" class="form-control border-start-0" id="appointmentSearchInput" placeholder="Search patient or doctor..." autocomplete="off" value="{{ search_query|default:'' }}" oninput="searchAppointments()">
-                            <button type="button" class="btn btn-primary" onclick="searchAppointments()">Search</button>
-                            <ul class="list-group position-absolute w-100" id="appointmentSuggestions" style="top: 100%; left: 0; z-index: 1000; max-height: 250px; overflow-y: auto; display: none; border: 1px solid #dee2e6; border-top: none;"></ul>
+                            <button type="button" class="btn btn-primary" id="appointmentSearchButton" onclick="searchAppointments()">Search</button>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-select">
-                            <option>All Status</option>
-                            <option>Confirmed</option>
-                            <option>Pending</option>
-                            <option>Completed</option>
-                            <option>Cancelled</option>
+                        <select class="form-select" id="appointmentStatusFilter" onchange="searchAppointments()">
+                            <option value="">All Status</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
                         </select>
                     </div>
                 </div>
@@ -115,15 +114,18 @@
                             <table class="table table-hover mb-0 fs-sm">
                                 <thead class="table-light">
                                     <tr id="appointmentsTableHeader">
+                                        <th>Appointment ID</th>
                                         <th>Patient Name</th>
                                         <th>Doctor Name</th>
                                         <th>Date</th>
                                         <th>Time</th>
                                         <th>Type</th>
                                         <th>Service Charge</th>
-                                        <th>Manager Status</th>
+                                        <th>Assigned To</th>
+                                        <th>Employee Status</th>
                                         <th>Doctor Status</th>
                                         <th>Final Status</th>
+                                        <th>Last Updated</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -172,21 +174,6 @@
     
     .nav-pills .nav-link {
         border-radius: 4px;
-    }
-
-    .suggestion-item {
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background-color 0.2s ease;
-    }
-
-    .suggestion-item:hover {
-        background-color: #f0f0f0;
-    }
-
-    .suggestion-item:last-child {
-        border-bottom: none;
     }
 
     /* Appointment Tab Button Styling */
@@ -322,19 +309,19 @@
                         <h6 class="fw-bold mb-3 text-primary">Status Information</h6>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label fw-bold">Manager Status</label>
-                                <div class="badge bg-success p-2" style="font-size: 0.9rem;">Confirmed</div>
+                                <label class="form-label fw-bold">Employee Status</label>
+                                <div id="employeeStatusBadge" class="badge bg-secondary p-2" style="font-size: 0.9rem;">Pending</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Doctor Status</label>
-                                <div class="badge bg-success p-2" style="font-size: 0.9rem;">Confirmed</div>
+                                <div id="doctorStatusBadge" class="badge bg-secondary p-2" style="font-size: 0.9rem;">Pending</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Final Status</label>
-                                <div class="badge bg-success p-2" style="font-size: 0.9rem;">Confirmed</div>
+                                <div id="finalStatusBadge" class="badge bg-secondary p-2" style="font-size: 0.9rem;">Pending</div>
                             </div>
                         </div>
-                        <small class="text-muted d-block mt-2">Note: Final status is automatically calculated based on Manager and Doctor status.</small>
+                        <small class="text-muted d-block mt-2">Note: Final status is automatically calculated based on Employee and Doctor status.</small>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -389,7 +376,28 @@
 
 <script>
 // Load appointment data into the edit modal
-function loadAppointmentData(appointmentId, patientName, patientAge, patientGender, patientPhone, patientEmail, doctorName, doctorSpecialty, doctorQualification, doctorPhone, appointmentDate, timeSlot, consultationType, serviceCharge, notes, status) {
+function getStatusBadgeClass(status) {
+    const value = String(status || '').toLowerCase();
+    if (value === 'confirmed') return 'bg-success';
+    if (value === 'completed') return 'bg-info';
+    if (value === 'cancelled') return 'bg-danger';
+    if (value === 'assigned') return 'bg-primary';
+    if (value === 'pending') return 'bg-warning text-dark';
+    return 'bg-secondary';
+}
+
+function setStatusBadge(elementId, statusText) {
+    const el = document.getElementById(elementId);
+    if (!el) {
+        return;
+    }
+    const value = String(statusText || 'pending');
+    el.className = `badge ${getStatusBadgeClass(value)} p-2`;
+    el.style.fontSize = '0.9rem';
+    el.textContent = value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function loadAppointmentData(appointmentId, patientName, patientAge, patientGender, patientPhone, patientEmail, doctorName, doctorSpecialty, doctorQualification, doctorPhone, appointmentDate, timeSlot, consultationType, serviceCharge, notes, status, employeeStatus, doctorStatus) {
     document.getElementById('appointmentId').value = appointmentId;
     document.getElementById('patientName').value = patientName;
     document.getElementById('patientAge').value = patientAge;
@@ -406,6 +414,9 @@ function loadAppointmentData(appointmentId, patientName, patientAge, patientGend
     document.getElementById('serviceCharge').value = serviceCharge;
     document.getElementById('appointmentNotes').value = notes;
     document.getElementById('appointmentStatus').value = status;
+    setStatusBadge('employeeStatusBadge', employeeStatus);
+    setStatusBadge('doctorStatusBadge', doctorStatus);
+    setStatusBadge('finalStatusBadge', status);
 }
 
 // Submit edit appointment
@@ -473,74 +484,17 @@ function deleteAppointment(appointmentId) {
 // Appointment Search Function
 function searchAppointments() {
     const input = document.getElementById('appointmentSearchInput');
-    const suggestionsBox = document.getElementById('appointmentSuggestions');
-    const query = input.value.trim();
+    const statusFilter = document.getElementById('appointmentStatusFilter');
+    const activeTabBtn = document.querySelector('.appointment-tab-btn.active');
 
-    if (query.length < 1) {
-        suggestionsBox.style.display = 'none';
-        return;
+    if (activeTabBtn) {
+        currentTab = activeTabBtn.getAttribute('data-tab') || 'distributed';
     }
 
-    fetch(`/dashboard/admin/appointments/search/?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.results.length > 0) {
-                displayAppointmentSuggestions(data.results, suggestionsBox);
-                suggestionsBox.style.display = 'block';
-            } else {
-                suggestionsBox.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching appointment suggestions:', error);
-            suggestionsBox.style.display = 'none';
-        });
+    currentSearchTerm = (input?.value || '').trim().toLowerCase();
+    currentStatusFilter = (statusFilter?.value || '').trim().toLowerCase();
+    renderAppointmentsTable();
 }
-
-// Display Appointment Suggestions
-function displayAppointmentSuggestions(results, container) {
-    container.innerHTML = '';
-    results.forEach(result => {
-        const item = document.createElement('li');
-        item.className = 'list-group-item suggestion-item';
-        item.textContent = result.display;
-        item.onclick = () => {
-            document.getElementById('appointmentSearchInput').value = result.display;
-            container.style.display = 'none';
-            if (result.url) {
-                window.location.href = result.url;
-            } else {
-                filterAppointmentsTable(result.display);
-            }
-        };
-        container.appendChild(item);
-    });
-}
-
-// Filter Appointments Table
-function filterAppointmentsTable(searchTerm) {
-    const table = document.querySelector('.table tbody');
-    const rows = table.querySelectorAll('tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        if (text.includes(searchTerm.toLowerCase())) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-}
-
-// Close suggestions when clicking outside
-document.addEventListener('click', function(event) {
-    const appointmentInput = document.getElementById('appointmentSearchInput');
-    const appointmentSuggestions = document.getElementById('appointmentSuggestions');
-
-    if (event.target !== appointmentInput && !appointmentInput.contains(event.target)) {
-        appointmentSuggestions.style.display = 'none';
-    }
-});
 
 // ===== TAB SWITCHING AND APPOINTMENT FILTERING =====
 // Store appointment data from template
@@ -553,6 +507,30 @@ const employeesData = {{ employees_json|safe }};
 const selectedEmployees = {};
 
 let currentTab = 'distributed';
+let currentSearchTerm = (document.getElementById('appointmentSearchInput')?.value || '').trim().toLowerCase();
+let currentStatusFilter = (document.getElementById('appointmentStatusFilter')?.value || '').trim().toLowerCase();
+
+function getFilteredAppointments() {
+    const appointments = appointmentsData[currentTab] || [];
+    return appointments.filter(appt => {
+        const patientName = appt.patient
+            ? `${appt.patient.first_name || ''} ${appt.patient.last_name || ''}`.trim()
+            : (appt.guest_full_name || '');
+        const doctorName = `Dr. ${appt.doctor.user.first_name || ''} ${appt.doctor.user.last_name || ''}`.trim();
+        const haystack = [
+            patientName,
+            doctorName,
+            appt.date || '',
+            appt.time_slot || '',
+            appt.status || '',
+            appt.hospital?.name || '',
+        ].join(' ').toLowerCase();
+
+        const matchesSearch = !currentSearchTerm || haystack.includes(currentSearchTerm);
+        const matchesStatus = !currentStatusFilter || (appt.status || '').toLowerCase() === currentStatusFilter;
+        return matchesSearch && matchesStatus;
+    });
+}
 
 // Tab button click handlers
 document.querySelectorAll('.appointment-tab-btn').forEach(btn => {
@@ -573,39 +551,45 @@ document.querySelectorAll('.appointment-tab-btn').forEach(btn => {
         });
         
         // Render table
-        renderAppointmentsTable();
+        searchAppointments();
     });
 });
 
 // Function to render appointments table based on current tab
 function renderAppointmentsTable() {
     const tableBody = document.getElementById('appointmentsTableBody');
-    const appointments = appointmentsData[currentTab];
+    const appointments = getFilteredAppointments();
     const tableHeader = document.getElementById('appointmentsTableHeader');
 
     if (tableHeader) {
         if (currentTab === 'non_distributed') {
             tableHeader.innerHTML = `
+                <th>Appointment ID</th>
                 <th>Patient Name</th>
                 <th>Doctor Name</th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Type</th>
                 <th>Service Charge</th>
+                <th>Final Status</th>
                 <th>Select Employee</th>
+                <th>Last Updated</th>
                 <th>Action</th>
             `;
         } else {
             tableHeader.innerHTML = `
+                <th>Appointment ID</th>
                 <th>Patient Name</th>
                 <th>Doctor Name</th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Type</th>
                 <th>Service Charge</th>
-                <th>Manager Status</th>
+                <th>Assigned To</th>
+                <th>Employee Status</th>
                 <th>Doctor Status</th>
                 <th>Final Status</th>
+                <th>Last Updated</th>
                 <th>Action</th>
             `;
         }
@@ -613,8 +597,8 @@ function renderAppointmentsTable() {
     
     if (!appointments || appointments.length === 0) {
         tableBody.innerHTML = currentTab === 'non_distributed'
-            ? '<tr><td colspan="8" class="text-center py-4 text-muted">No appointments found</td></tr>'
-            : '<tr><td colspan="10" class="text-center py-4 text-muted">No appointments found</td></tr>';
+            ? '<tr><td colspan="11" class="text-center py-4 text-muted">No appointments found</td></tr>'
+            : '<tr><td colspan="13" class="text-center py-4 text-muted">No appointments found</td></tr>';
         return;
     }
     
@@ -641,13 +625,19 @@ function renderAppointmentsTable() {
         
         html += `
             <tr data-appointment-id="${appt.id}">
+                <td class="small fw-bold text-primary">APT-${String(appt.id).padStart(5, '0')}</td>
                 <td><a href="#" class="text-primary text-decoration-none fw-bold">${patientName}</a></td>
                 <td>Dr. ${appt.doctor.user.first_name} ${appt.doctor.user.last_name}</td>
                 <td class="small">${appt.date}</td>
                 <td class="small">${appt.time_slot}</td>
-                <td class="small">${appt.consultation_type === 'online' ? 'Online' : 'In-Person'}</td>
-                <td class="small">৳${appt.total_amount}</td>
+                <td class="small">In-Person</td>
+                <td class="small">৳${appt.service_fee}</td>
                 ${currentTab === 'non_distributed' ? `
+                    <td>
+                        <span class="badge ${getStatusBadgeClass(appt.status)}">
+                            ${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                        </span>
+                    </td>
                     <td>
                         <select class="form-select form-select-sm" ${employeeSelectorDisabled} onchange="selectEmployeeForAppointment(${appt.id}, this.value)">
                             ${employeeOptions}
@@ -658,24 +648,29 @@ function renderAppointmentsTable() {
                             </button>
                         </div>
                     </td>
+                    <td class="small text-muted">${appt.updated_at_display || '-'}</td>
                 ` : `
+                    <td class="small">${assignedEmployee || '-'}</td>
                     <td>
-                        <div>
-                            <span class="badge ${appt.status === 'confirmed' ? 'bg-success' : appt.status === 'pending' ? 'bg-warning' : 'bg-secondary'}">
-                                ${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
-                            </span>
-                        </div>
+                        <span class="badge ${getStatusBadgeClass(appt.employee_status)}">
+                            ${(appt.employee_status || 'pending').charAt(0).toUpperCase() + (appt.employee_status || 'pending').slice(1)}
+                        </span>
                     </td>
-                    <td><span class="badge bg-success">Confirmed</span></td>
                     <td>
-                        <span class="badge ${appt.status === 'confirmed' ? 'bg-success' : appt.status === 'pending' ? 'bg-warning' : 'bg-secondary'}">
+                        <span class="badge ${getStatusBadgeClass(appt.doctor_status)}">
+                            ${(appt.doctor_status || 'pending').charAt(0).toUpperCase() + (appt.doctor_status || 'pending').slice(1)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${getStatusBadgeClass(appt.status)}">
                             ${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
                         </span>
                     </td>
+                    <td class="small text-muted">${appt.updated_at_display || '-'}</td>
                 `}
                 <td>
                     <div class="btn-group btn-group-sm" role="group">
-                        <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#editAppointmentModal" onclick="loadAppointmentData(${appt.id}, '${patientName}', ${patientAge}, '${patientGender}', '${patientPhone}', '${patientEmail}', 'Dr. ${appt.doctor.user.first_name} ${appt.doctor.user.last_name}', '${appt.doctor.specialties && appt.doctor.specialties[0] ? appt.doctor.specialties[0].name : ''}', '${appt.doctor.qualifications}', '${appt.doctor.user.phone}', '${appt.date}', '${appt.time_slot}', '${appt.consultation_type}', '${appt.service_fee}', '${appt.patient_notes}', '${appt.status}')">
+                        <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#editAppointmentModal" onclick="loadAppointmentData(${appt.id}, '${patientName}', ${patientAge}, '${patientGender}', '${patientPhone}', '${patientEmail}', 'Dr. ${appt.doctor.user.first_name} ${appt.doctor.user.last_name}', '${appt.doctor.specialties && appt.doctor.specialties[0] ? appt.doctor.specialties[0].name : ''}', '${appt.doctor.qualifications}', '${appt.doctor.user.phone}', '${appt.date}', '${appt.time_slot}', 'in_person', '${appt.service_fee}', '${appt.patient_notes}', '${appt.status}', '${appt.employee_status || 'pending'}', '${appt.doctor_status || 'pending'}')">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteAppointment(${appt.id})">
@@ -756,6 +751,25 @@ function assignEmployeeToAppointment(appointmentId) {
 
 // Initial render on page load
 document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('appointmentSearchInput');
+    const searchButton = document.getElementById('appointmentSearchButton');
+
+    if (searchInput) {
+        searchInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                searchAppointments();
+            }
+        });
+    }
+
+    if (searchButton) {
+        searchButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            searchAppointments();
+        });
+    }
+
     renderAppointmentsTable();
 });
 </script>

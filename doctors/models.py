@@ -160,11 +160,6 @@ class Doctor(models.Model):
 
     def get_consultation_fee(self, consultation_type='in_person', hospital=None):
         """Resolve consultation fee consistently across the project."""
-        consultation_type = (consultation_type or 'in_person').lower()
-
-        if consultation_type == 'online':
-            return self.consultation_fee_online or Decimal('0.00')
-
         hospital_fee = self.get_hospital_consultation_fee(hospital=hospital)
         if hospital_fee > Decimal('0.00'):
             return hospital_fee
@@ -178,8 +173,8 @@ class Doctor(models.Model):
 
     @property
     def display_online_fee(self):
-        """Template-friendly online fee."""
-        return self.get_consultation_fee('online')
+        """Backward-compatible alias for in-person fee."""
+        return self.get_consultation_fee('in_person')
     
     def update_rating(self):
         """Update doctor's average rating"""

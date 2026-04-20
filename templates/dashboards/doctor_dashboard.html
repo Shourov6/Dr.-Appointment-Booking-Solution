@@ -174,6 +174,7 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
+                                        <th class="text-muted small fw-bold">Appointment ID</th>
                                         <th class="text-muted small fw-bold">Patient Name</th>
                                         <th class="text-muted small fw-bold">Date</th>
                                         <th class="text-muted small fw-bold">Time</th>
@@ -185,6 +186,7 @@
                                 <tbody>
                                     {% for appt in today_appointments %}
                                     <tr>
+                                        <td class="small fw-bold text-primary">APT-{{ appt.id|stringformat:"05d" }}</td>
                                         <td class="small fw-bold">{{ appt.patient.get_full_name }}</td>
                                         <td class="small">{{ appt.date|date:"d M, Y" }}</td>
                                         <td class="small">{{ appt.time_slot }}</td>
@@ -200,11 +202,7 @@
                                             {% endif %}
                                         </td>
                                         <td class="small">
-                                            {% if appt.consultation_type == 'online' %}
-                                                <span class="badge bg-light text-dark">Online</span>
-                                            {% else %}
-                                                <span class="badge bg-light text-dark">In-Person</span>
-                                            {% endif %}
+                                            <span class="badge bg-light text-dark">In-Person</span>
                                         </td>
                                         <td>
                                             <a href="{% url 'appointments:detail' appt.id %}" class="btn btn-sm btn-link text-primary p-0">
@@ -214,7 +212,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted">No appointments today</td>
+                                        <td colspan="7" class="text-center py-4 text-muted">No appointments today</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

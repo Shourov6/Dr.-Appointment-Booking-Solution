@@ -151,7 +151,7 @@ def create_doctors(hospitals, specializations):
             'specialty_idx': 0,
             'qualifications': 'MBBS, MD (Cardiology)',
             'about': 'Experienced cardiologist with 15 years of practice',
-            'consultation_fee_online': 500,
+            'consultation_fee_online': 0,
             'consultation_fee_in_person': 1000
         },
         {
@@ -164,7 +164,7 @@ def create_doctors(hospitals, specializations):
             'specialty_idx': 1,
             'qualifications': 'MBBS, MD (Dermatology)',
             'about': 'Dermatology specialist with expertise in skin conditions',
-            'consultation_fee_online': 400,
+            'consultation_fee_online': 0,
             'consultation_fee_in_person': 800
         },
         {
@@ -177,7 +177,7 @@ def create_doctors(hospitals, specializations):
             'specialty_idx': 2,
             'qualifications': 'MBBS, MS (Orthopedics)',
             'about': 'Orthopedic surgeon specializing in joint replacement',
-            'consultation_fee_online': 600,
+            'consultation_fee_online': 0,
             'consultation_fee_in_person': 1200
         },
         {
@@ -190,7 +190,7 @@ def create_doctors(hospitals, specializations):
             'specialty_idx': 4,
             'qualifications': 'MBBS, MD (Pediatrics)',
             'about': 'Pediatrician with special care for newborns',
-            'consultation_fee_online': 350,
+            'consultation_fee_online': 0,
             'consultation_fee_in_person': 700
         },
         {
@@ -203,7 +203,7 @@ def create_doctors(hospitals, specializations):
             'specialty_idx': 5,
             'qualifications': 'MBBS, MD (General Medicine)',
             'about': 'General Medicine doctor with 10 years experience',
-            'consultation_fee_online': 300,
+            'consultation_fee_online': 0,
             'consultation_fee_in_person': 600
         }
     ]
@@ -337,7 +337,7 @@ def create_appointments(patients, doctors, hospitals):
         return
     
     statuses = ['pending', 'confirmed', 'completed', 'cancelled']
-    consultation_types = ['online', 'in_person']
+    consultation_types = ['in_person']
     
     for i, patient in enumerate(patients):
         doctor = doctors[i % len(doctors)]
@@ -348,7 +348,7 @@ def create_appointments(patients, doctors, hospitals):
             appt_date = date.today() + timedelta(days=j+1)
             
             consultation_type = consultation_types[j % len(consultation_types)]
-            fee = doctor.consultation_fee_online if consultation_type == 'online' else doctor.consultation_fee_in_person
+            fee = doctor.consultation_fee_in_person
             
             appointment, created = Appointment.objects.get_or_create(
                 patient=patient,
@@ -388,10 +388,10 @@ def create_payments(patients, doctors, hospitals):
             defaults={
                 'hospital': hospital,
                 'time_slot': '03:00 PM',
-                'consultation_type': 'online',
-                'consultation_fee': doctor.consultation_fee_online,
+                'consultation_type': 'in_person',
+                'consultation_fee': doctor.consultation_fee_in_person,
                 'service_fee': 100,
-                'total_amount': doctor.consultation_fee_online + 100,
+                'total_amount': doctor.consultation_fee_in_person + 100,
                 'status': 'confirmed',
                 'is_paid': True
             }

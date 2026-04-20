@@ -179,7 +179,23 @@
                                                         </ul>
                                                     {% else %}-{% endif %}
                                                 </td>
-                                                <td class="small">09:00 - 17:00</td>
+                                                <td class="small">
+                                                    {% if doctor.hospitals.exists %}
+                                                        <ul class="list-unstyled mb-0">
+                                                        {% for dh in doctor.hospitals.all %}
+                                                            <li>
+                                                                {% if dh.display_rows %}
+                                                                    {% for row in dh.display_rows %}
+                                                                        <span class="d-block">{{ row.day }}{% if row.time %}: {{ row.time }}{% endif %}</span>
+                                                                    {% endfor %}
+                                                                {% else %}
+                                                                    N/A
+                                                                {% endif %}
+                                                            </li>
+                                                        {% endfor %}
+                                                        </ul>
+                                                    {% else %}-{% endif %}
+                                                </td>
                                                 <td class="small">{{ doctor.appointments.count }}</td>
                                                 <td class="small">
                                                     <span class="badge bg-light text-dark">5.0%</span>

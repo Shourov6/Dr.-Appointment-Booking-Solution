@@ -72,7 +72,7 @@
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="radio" name="specialty" value="{{ specialty.id }}" 
                                    id="specialty_{{ specialty.id }}" 
-                                   {% if request.GET.specialty|stringformat:"s" == specialty.id|stringformat:"s" %}checked{% endif %}>
+                                   {% if selected_specialty|stringformat:"s" == specialty.id|stringformat:"s" %}checked{% endif %}>
                             <label class="form-check-label" for="specialty_{{ specialty.id }}">
                                 {{ specialty.name }}
                             </label>
@@ -81,7 +81,7 @@
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="radio" name="specialty" value="" 
                                    id="specialty_all" 
-                                   {% if not request.GET.specialty %}checked{% endif %}>
+                                   {% if not selected_specialty %}checked{% endif %}>
                             <label class="form-check-label" for="specialty_all">
                                 All Specialties
                             </label>
@@ -96,35 +96,35 @@
                     </div>
                     <div class="card-body p-3">
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="district" value="dhaka" id="district_dhaka">
+                            <input class="form-check-input" type="checkbox" name="district" value="dhaka" id="district_dhaka" {% if 'dhaka' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_dhaka">Dhaka</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="district" value="chittagong" id="district_chittagong">
+                            <input class="form-check-input" type="checkbox" name="district" value="chittagong" id="district_chittagong" {% if 'chittagong' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_chittagong">Chittagong</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="district" value="rajshahi" id="district_rajshahi">
+                            <input class="form-check-input" type="checkbox" name="district" value="rajshahi" id="district_rajshahi" {% if 'rajshahi' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_rajshahi">Rajshahi</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="district" value="khulna" id="district_khulna">
+                            <input class="form-check-input" type="checkbox" name="district" value="khulna" id="district_khulna" {% if 'khulna' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_khulna">Khulna</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="district" value="barisal" id="district_barisal">
+                            <input class="form-check-input" type="checkbox" name="district" value="barisal" id="district_barisal" {% if 'barisal' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_barisal">Barisal</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="district" value="sylhet" id="district_sylhet">
+                            <input class="form-check-input" type="checkbox" name="district" value="sylhet" id="district_sylhet" {% if 'sylhet' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_sylhet">Sylhet</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="district" value="rangpur" id="district_rangpur">
+                            <input class="form-check-input" type="checkbox" name="district" value="rangpur" id="district_rangpur" {% if 'rangpur' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_rangpur">Rangpur</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="district" value="mymensingh" id="district_mymensingh">
+                            <input class="form-check-input" type="checkbox" name="district" value="mymensingh" id="district_mymensingh" {% if 'mymensingh' in selected_districts %}checked{% endif %}>
                             <label class="form-check-label" for="district_mymensingh">Mymensingh</label>
                         </div>
                     </div>
@@ -137,15 +137,15 @@
                     </div>
                     <div class="card-body p-3">
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="gender" value="all" id="gender_all" checked>
+                            <input class="form-check-input" type="radio" name="gender" value="all" id="gender_all" {% if selected_gender == 'all' %}checked{% endif %}>
                             <label class="form-check-label" for="gender_all">All</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="gender" value="male" id="gender_male">
+                            <input class="form-check-input" type="radio" name="gender" value="male" id="gender_male" {% if selected_gender == 'male' %}checked{% endif %}>
                             <label class="form-check-label" for="gender_male">Male</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="gender" value="female" id="gender_female">
+                            <input class="form-check-input" type="radio" name="gender" value="female" id="gender_female" {% if selected_gender == 'female' %}checked{% endif %}>
                             <label class="form-check-label" for="gender_female">Female</label>
                         </div>
                     </div>
@@ -158,8 +158,8 @@
                     </div>
                     <div class="card-body p-3">
                         <div class="mb-3">
-                            <input type="range" class="form-range" name="fee_range" id="feeRange" min="0" max="5000" value="5000">
-                            <small class="text-muted">Up to ৳ <span id="feeValue">5000</span></small>
+                            <input type="range" class="form-range" name="fee_range" id="feeRange" min="0" max="5000" value="{{ selected_fee }}">
+                            <small class="text-muted">Up to ৳ <span id="feeValue">{{ selected_fee }}</span></small>
                         </div>
                     </div>
                 </div>
@@ -168,7 +168,7 @@
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body p-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="available_today" value="true" id="available_today">
+                            <input class="form-check-input" type="checkbox" name="available_today" value="true" id="available_today" {% if request.GET.available_today %}checked{% endif %}>
                             <label class="form-check-label" for="available_today">
                                 Available Today
                             </label>
@@ -178,7 +178,7 @@
 
                 <!-- Filter Button -->
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <button type="submit" class="btn btn-primary" style="display: none;">Apply Filters</button>
                     <a href="{% url 'doctors:list' %}" class="btn btn-outline-secondary">Reset Filters</a>
                 </div>
             </form>
@@ -248,7 +248,7 @@
                                     <!-- Status Badges -->
                                     <div class="mb-3">
                                         <span class="badge bg-success me-2">
-                                            <i class="bi bi-check-circle me-1"></i>Online
+                                            <i class="bi bi-check-circle me-1"></i>In-Person
                                         </span>
                                         <span class="badge bg-light text-dark">
                                             Today
@@ -447,7 +447,7 @@
         transform: translateX(4px);
     }
 
-    .online-status {
+    .in-person-status {
         display: flex;
         align-items: center;
     }
@@ -759,6 +759,146 @@
 </style>
 
 <script>
+    // Auto-submit filter form using AJAX (no page reload, no scroll to top)
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        // Get all filter inputs (radio, checkbox, range, etc.)
+        const filterInputs = filterForm.querySelectorAll('input[name="specialty"], input[name="district"], input[name="gender"], input[name="fee_range"], input[name="available_today"]');
+        
+        filterInputs.forEach(input => {
+            if (input.type === 'range') {
+                // For range input, submit on change (not on every input event to avoid too many requests)
+                input.addEventListener('change', function() {
+                    submitFilterForm();
+                });
+            } else {
+                // For radio and checkbox, submit immediately on change
+                input.addEventListener('change', function() {
+                    submitFilterForm();
+                });
+            }
+        });
+
+        // AJAX form submission
+        function submitFilterForm() {
+            const formData = new FormData(filterForm);
+            const queryString = new URLSearchParams(formData).toString();
+            
+            // Use AJAX to fetch filtered results
+            fetch(`${filterForm.action}?${queryString}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                // Parse the response to extract only the results section
+                const parser = new DOMParser();
+                const newDoc = parser.parseFromString(html, 'text/html');
+                
+                // Update the doctors grid and pagination
+                const newDoctorsGrid = newDoc.querySelector('.row.g-3');
+                const oldDoctorsGrid = document.querySelector('.row.g-3');
+                
+                if (newDoctorsGrid && oldDoctorsGrid) {
+                    oldDoctorsGrid.parentElement.replaceChild(
+                        document.importNode(newDoctorsGrid, true),
+                        oldDoctorsGrid
+                    );
+                }
+                
+                // Update results header
+                const newResultsHeader = newDoc.querySelector('.d-flex.justify-content-between.align-items-center');
+                const oldResultsHeader = document.querySelector('.d-flex.justify-content-between.align-items-center');
+                
+                if (newResultsHeader && oldResultsHeader) {
+                    oldResultsHeader.parentElement.replaceChild(
+                        document.importNode(newResultsHeader, true),
+                        oldResultsHeader
+                    );
+                }
+                
+                // Update pagination
+                const newPagination = newDoc.querySelector('.pagination');
+                const oldPagination = document.querySelector('.pagination');
+                
+                if (newPagination && oldPagination) {
+                    oldPagination.parentElement.replaceChild(
+                        document.importNode(newPagination, true),
+                        oldPagination
+                    );
+                    // Re-attach pagination click handlers
+                    attachPaginationHandlers();
+                } else if (newPagination && !oldPagination) {
+                    // Add pagination if it didn't exist before
+                    const doctorsSection = document.querySelector('.col-lg-6');
+                    if (doctorsSection) {
+                        doctorsSection.appendChild(document.importNode(newPagination, true));
+                        attachPaginationHandlers();
+                    }
+                }
+            })
+            .catch(error => console.error('Error fetching filters:', error));
+        }
+
+        // Handle pagination links with AJAX
+        function attachPaginationHandlers() {
+            const paginationLinks = document.querySelectorAll('.pagination a');
+            paginationLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const url = this.href;
+                    const queryString = new URL(url).search;
+                    window.history.pushState({}, '', url);
+                    
+                    // Build form data with current filters + page number
+                    const formData = new FormData(filterForm);
+                    const allParams = new URLSearchParams(formData);
+                    
+                    // Add page param
+                    const pageParam = new URL(url).searchParams.get('page');
+                    if (pageParam) allParams.set('page', pageParam);
+                    
+                    // Fetch with all filters
+                    fetch(`${filterForm.action}?${allParams.toString()}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const newDoc = parser.parseFromString(html, 'text/html');
+                        
+                        const newDoctorsGrid = newDoc.querySelector('.row.g-3');
+                        const oldDoctorsGrid = document.querySelector('.row.g-3');
+                        
+                        if (newDoctorsGrid && oldDoctorsGrid) {
+                            oldDoctorsGrid.parentElement.replaceChild(
+                                document.importNode(newDoctorsGrid, true),
+                                oldDoctorsGrid
+                            );
+                        }
+                        
+                        const newPagination = newDoc.querySelector('.pagination');
+                        const oldPagination = document.querySelector('.pagination');
+                        
+                        if (newPagination && oldPagination) {
+                            oldPagination.parentElement.replaceChild(
+                                document.importNode(newPagination, true),
+                                oldPagination
+                            );
+                            attachPaginationHandlers();
+                        }
+                    });
+                });
+            });
+        }
+        
+        // Initial pagination setup
+        attachPaginationHandlers();
+    }
+
     document.getElementById('feeRange').addEventListener('input', function() {
         document.getElementById('feeValue').textContent = this.value;
     });

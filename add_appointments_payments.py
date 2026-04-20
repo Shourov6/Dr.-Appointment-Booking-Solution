@@ -39,7 +39,7 @@ def add_appointments_and_payments():
                     doctor=doctor,
                     date=appt_date,
                     time_slot=f"{random.randint(9, 16)}:00",
-                    consultation_type=random.choice(['online', 'in_person']),
+                    consultation_type='in_person',
                     reason=random.choice(['Checkup', 'Consultation', 'Follow-up']),
                     status=status,
                     is_paid=random.choice([True, False])

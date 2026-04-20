@@ -231,7 +231,10 @@
                                     {% for appt in recent_appointments %}
                                     <div class="list-group-item px-4 py-3 border-bottom">
                                         <div class="row align-items-center">
-                                            <div class="col-md-4">
+                                            <div class="col-md-1">
+                                                <small class="text-primary fw-bold">APT-{{ appt.id|stringformat:"05d" }}</small>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <h6 class="mb-0 fw-bold">{{ appt.patient.get_full_name }}</h6>
                                                 <small class="text-muted">{{ appt.doctor.get_full_name }}</small>
                                             </div>

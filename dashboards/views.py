@@ -43,6 +43,7 @@ import re
 from accounts.models import User, PatientProfile, EmployeeProfile
 from accounts.forms import is_gmail_address, generate_unique_username
 from doctors.models import Doctor, Specialty, Hospital, Review, DoctorHospital, DoctorWeeklySchedule, DoctorAvailability
+from doctors.schedule_display import attach_schedule_display
 from appointments.models import Appointment, CartItem, AppointmentHistory
 from payments.models import Payment, Invoice, DoctorEarning
 from .models import AdminNotification
@@ -1085,7 +1086,7 @@ def admin_doctors(request):
         messages.error(request, 'Access denied.')
         return redirect('home')
     
-    doctors = Doctor.objects.all().order_by('-created_at')
+    doctors = Doctor.objects.select_related('user').prefetch_related('specialties', 'hospitals__hospital').all().order_by('-created_at')
     hospitals = Hospital.objects.all().order_by('-created_at')
     active_tab = request.GET.get('tab', 'doctors')
 
@@ -1105,6 +1106,22 @@ def admin_doctors(request):
             Q(phone__icontains=search_query) |
             Q(email__icontains=search_query)
         ).distinct()
+
+    weekly_schedules = list(
+        DoctorWeeklySchedule.objects.filter(doctor__in=doctors)
+        .select_related('hospital', 'doctor')
+        .order_by('doctor_id', 'hospital_id', 'day_of_week', 'start_time')
+    )
+    weekly_by_pair = {}
+    for weekly in weekly_schedules:
+        weekly_by_pair.setdefault((weekly.doctor_id, weekly.hospital_id), []).append(weekly)
+
+    for doctor in doctors:
+        for hospital_link in doctor.hospitals.all():
+            attach_schedule_display(
+                hospital_link,
+                weekly_by_pair.get((doctor.id, hospital_link.hospital_id), []),
+            )
     
     context = {
         'doctors': doctors,
@@ -1496,23 +1513,8 @@ def admin_doctor_detail(request, doctor_id):
     schedule_weekly_payload = {}
     for schedule in hospital_schedules:
         entries = weekly_by_hospital.get(schedule.hospital_id, [])
-        schedule.weekly_entries = entries
-        schedule.display_rows = []
+        attach_schedule_display(schedule, entries)
         if entries:
-            day_indices = sorted({entry.day_of_week for entry in entries})
-            schedule.display_days = _day_labels_from_indices(day_indices)
-            for entry in entries:
-                start_text = entry.start_time.strftime('%I:%M %p') if entry.start_time else ''
-                end_text = entry.end_time.strftime('%I:%M %p') if entry.end_time else ''
-                time_text = f"{start_text} - {end_text}" if start_text and end_text else 'N/A'
-                schedule.display_rows.append({
-                    'day': entry.get_day_of_week_display(),
-                    'time': time_text,
-                    'day_index': entry.day_of_week,
-                    'start': start_text,
-                    'end': end_text,
-                })
-            schedule.display_time = 'N/A'
             schedule_weekly_payload[str(schedule.id)] = [
                 {
                     'day_index': entry.day_of_week,
@@ -1521,14 +1523,6 @@ def admin_doctor_detail(request, doctor_id):
                 }
                 for entry in entries
             ]
-        else:
-            schedule.display_days = schedule.consultation_days or []
-            if schedule.morning_start and schedule.morning_end:
-                schedule.display_time = f"{schedule.morning_start.strftime('%H:%M')} - {schedule.morning_end.strftime('%H:%M')}"
-            elif schedule.evening_start and schedule.evening_end:
-                schedule.display_time = f"{schedule.evening_start.strftime('%H:%M')} - {schedule.evening_end.strftime('%H:%M')}"
-            else:
-                schedule.display_time = 'N/A'
 
     assigned_hospital_ids = [schedule.hospital_id for schedule in hospital_schedules]
     available_hospitals = Hospital.objects.filter(is_active=True).exclude(id__in=assigned_hospital_ids).order_by('name')
@@ -2005,31 +1999,44 @@ def create_doctor(request):
                             if request.POST.get(checkbox_name) == 'on':
                                 start_time_str = request.POST.get(f'start_time_{i}_{day_index}')
                                 end_time_str = request.POST.get(f'end_time_{i}_{day_index}')
-                                
-                                if start_time_str and end_time_str:
-                                    try:
-                                        # Parse 12-hour (08:15 PM) and 24-hour (20:15) input formats
-                                        start_time = parse_flexible_time(start_time_str)
-                                        end_time = parse_flexible_time(end_time_str)
-                                        if not start_time or not end_time:
-                                            continue
-                                        
-                                        # Update existing schedule if present, otherwise create it
-                                        DoctorWeeklySchedule.objects.update_or_create(
-                                            doctor=doctor,
-                                            hospital=hospital,
-                                            day_of_week=day_index,
-                                            defaults={
-                                                'start_time': start_time,
-                                                'end_time': end_time,
-                                                'is_active': True,
-                                            }
-                                        )
-                                        selected_day_indices.append(day_index)
-                                        selected_starts.append(start_time)
-                                        selected_ends.append(end_time)
-                                    except (ValueError, Exception):
-                                        pass
+
+                                if not start_time_str or not end_time_str:
+                                    raise ValueError(
+                                        f"Please set both Start and End times for {DAY_LABELS_SHORT[day_index]} in Hospital #{i + 1}."
+                                    )
+
+                                done_flag = request.POST.get(f'day_done_{i}_{day_index}', '0')
+                                if done_flag != '1':
+                                    raise ValueError(
+                                        f"Please confirm {DAY_LABELS_SHORT[day_index]} by clicking Done in Hospital #{i + 1}."
+                                    )
+
+                                # Parse 12-hour (08:15 PM) and 24-hour (20:15) input formats
+                                start_time = parse_flexible_time(start_time_str)
+                                end_time = parse_flexible_time(end_time_str)
+                                if not start_time or not end_time:
+                                    raise ValueError(
+                                        f"Invalid time for {DAY_LABELS_SHORT[day_index]} in Hospital #{i + 1}."
+                                    )
+                                if start_time >= end_time:
+                                    raise ValueError(
+                                        f"End time must be after Start time for {DAY_LABELS_SHORT[day_index]} in Hospital #{i + 1}."
+                                    )
+
+                                # Update existing schedule if present, otherwise create it
+                                DoctorWeeklySchedule.objects.update_or_create(
+                                    doctor=doctor,
+                                    hospital=hospital,
+                                    day_of_week=day_index,
+                                    defaults={
+                                        'start_time': start_time,
+                                        'end_time': end_time,
+                                        'is_active': True,
+                                    }
+                                )
+                                selected_day_indices.append(day_index)
+                                selected_starts.append(start_time)
+                                selected_ends.append(end_time)
 
                         if selected_day_indices and selected_starts and selected_ends:
                             doctor_hospital.consultation_days = _day_labels_from_indices(selected_day_indices)
@@ -2434,8 +2441,17 @@ def admin_appointments(request):
         messages.error(request, 'Access denied.')
         return redirect('home')
     
-    # Get all appointments
-    all_appointments = Appointment.objects.all().select_related('doctor', 'doctor__user', 'hospital', 'patient', 'assigned_to').order_by('-created_at')
+    # Get all appointments with related data needed for cross-dashboard sync.
+    all_appointments = Appointment.objects.all().select_related(
+        'doctor',
+        'doctor__user',
+        'hospital',
+        'patient',
+        'assigned_to',
+    ).prefetch_related(
+        'doctor__specialties',
+        'history__changed_by',
+    ).order_by('-created_at')
     employees = User.objects.filter(
         role='employee',
         is_active=True,
@@ -2459,9 +2475,31 @@ def admin_appointments(request):
     non_distributed_appointments = all_appointments.filter(assigned_to__isnull=True)
     
     # Serialize appointments to JSON-friendly format
+    def _resolve_role_status(histories, roles):
+        for entry in histories:
+            changed_by = entry.changed_by
+            if not changed_by:
+                continue
+            if getattr(changed_by, 'role', '') in roles:
+                return entry.status_to
+        return None
+
     def serialize_appointments(appointments):
         data = []
         for appt in appointments:
+            histories = list(appt.history.all())
+            employee_status = _resolve_role_status(histories, {'super_admin', 'employee'})
+            doctor_status = _resolve_role_status(histories, {'doctor'})
+
+            if not employee_status:
+                employee_status = 'assigned' if appt.assigned_to else 'pending'
+
+            if not doctor_status:
+                if appt.status in ['completed', 'cancelled']:
+                    doctor_status = appt.status
+                else:
+                    doctor_status = 'pending'
+
             data.append({
                 'id': appt.id,
                 'patient': {
@@ -2501,6 +2539,10 @@ def admin_appointments(request):
                 'total_amount': str(appt.total_amount),
                 'service_fee': str(appt.service_fee),
                 'patient_notes': appt.patient_notes,
+                'employee_status': employee_status,
+                'manager_status': employee_status,
+                'doctor_status': doctor_status,
+                'updated_at_display': appt.updated_at.strftime('%d %b %Y, %I:%M %p'),
             })
         return data
     
@@ -2843,8 +2885,13 @@ def employee_appointments(request):
         messages.error(request, 'Access denied.')
         return redirect('home')
     
-    # Get base queryset
-    appointments = Appointment.objects.all().order_by('-created_at')
+    # Employees should only see appointments assigned to them.
+    appointments = Appointment.objects.select_related(
+        'patient',
+        'doctor',
+        'doctor__user',
+        'assigned_to',
+    ).filter(assigned_to=request.user).order_by('-created_at')
     
     # Get search query
     search_query = request.GET.get('search', '').strip()

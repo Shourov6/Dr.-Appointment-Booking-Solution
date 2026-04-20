@@ -51,8 +51,6 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
             is_active=True,
         ).select_related('hospital')
     )
-    if not weekly_schedules:
-        return
 
     slot_windows = []
     seen_slots = set()
@@ -79,7 +77,7 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
     )
     exception_map = {(ex.hospital_id, ex.date): ex for ex in exceptions}
 
-    # Also support admin dashboard schedules stored in DoctorHospital.
+    # Fallback source for older data where weekly rows are not present yet.
     doctor_hospital_schedules = list(
         DoctorHospital.objects.filter(
             doctor=doctor,
@@ -87,14 +85,21 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
         ).select_related('hospital')
     )
 
-    # Include exact windows from schedules so custom times (e.g. 20:00-22:00)
-    # are available even when they are outside default TIME_SLOTS.
-    for schedule in weekly_schedules:
-        add_slot_window(schedule.start_time, schedule.end_time)
+    if not weekly_schedules and not doctor_hospital_schedules:
+        return
 
-    for schedule in doctor_hospital_schedules:
-        add_slot_window(schedule.morning_start, schedule.morning_end)
-        add_slot_window(schedule.evening_start, schedule.evening_end)
+    # Weekly rows are the source of truth when present.
+    use_weekly = bool(weekly_schedules)
+
+    # Include exact windows from the active source so custom times are available
+    # even when they are outside default TIME_SLOTS.
+    if use_weekly:
+        for schedule in weekly_schedules:
+            add_slot_window(schedule.start_time, schedule.end_time)
+    else:
+        for schedule in doctor_hospital_schedules:
+            add_slot_window(schedule.morning_start, schedule.morning_end)
+            add_slot_window(schedule.evening_start, schedule.evening_end)
 
     def normalize_weekday(day_value):
         key = str(day_value or '').strip().lower().replace('.', '')
@@ -120,82 +125,38 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
         return day_map.get(key)
 
     total_days = (end_date - start_date).days + 1
+    allowed_slots_by_key = {}
+
     for offset in range(total_days):
         current_date = start_date + timedelta(days=offset)
         weekday = current_date.weekday()
 
-        for schedule in weekly_schedules:
-            if schedule.day_of_week != weekday:
-                continue
-
-            exception = exception_map.get((schedule.hospital_id, current_date))
-            if exception:
-                if not exception.is_available:
-                    DoctorAvailability.objects.filter(
-                        doctor=doctor,
-                        hospital_id=schedule.hospital_id,
-                        date=current_date,
-                        is_exception=False,
-                        is_booked=False,
-                    ).update(is_available=False)
-                continue
-
-            for slot_value, slot_start, slot_end in slot_windows:
-                # Keep slots that overlap the doctor's configured window.
-                if slot_end <= schedule.start_time or slot_start >= schedule.end_time:
+        if use_weekly:
+            for schedule in weekly_schedules:
+                if schedule.day_of_week != weekday:
                     continue
 
-                availability, created = DoctorAvailability.objects.get_or_create(
-                    doctor=doctor,
-                    hospital_id=schedule.hospital_id,
-                    date=current_date,
-                    time_slot=slot_value,
-                    defaults={
-                        'is_available': True,
-                        'is_booked': False,
-                        'is_exception': False,
-                    },
-                )
+                key = (schedule.hospital_id, current_date)
+                allowed_slots_by_key.setdefault(key, set())
 
-                # Re-activate normal generated slots if they were previously disabled.
-                if not created and not availability.is_exception and not availability.is_booked and not availability.is_available:
-                    availability.is_available = True
-                    availability.save(update_fields=['is_available', 'updated_at'])
+                exception = exception_map.get((schedule.hospital_id, current_date))
+                if exception:
+                    if not exception.is_available:
+                        DoctorAvailability.objects.filter(
+                            doctor=doctor,
+                            hospital_id=schedule.hospital_id,
+                            date=current_date,
+                            is_exception=False,
+                            is_booked=False,
+                        ).update(is_available=False)
+                    continue
 
-        # Generate from DoctorHospital consultation_days + morning/evening windows.
-        for schedule in doctor_hospital_schedules:
-            days = schedule.consultation_days or []
-            weekdays_for_schedule = {
-                normalize_weekday(day_label)
-                for day_label in days
-                if normalize_weekday(day_label) is not None
-            }
-
-            if weekday not in weekdays_for_schedule:
-                continue
-
-            exception = exception_map.get((schedule.hospital_id, current_date))
-            if exception:
-                if not exception.is_available:
-                    DoctorAvailability.objects.filter(
-                        doctor=doctor,
-                        hospital_id=schedule.hospital_id,
-                        date=current_date,
-                        is_exception=False,
-                        is_booked=False,
-                    ).update(is_available=False)
-                continue
-
-            time_windows = []
-            if schedule.morning_start and schedule.morning_end:
-                time_windows.append((schedule.morning_start, schedule.morning_end))
-            if schedule.evening_start and schedule.evening_end:
-                time_windows.append((schedule.evening_start, schedule.evening_end))
-
-            for win_start, win_end in time_windows:
                 for slot_value, slot_start, slot_end in slot_windows:
-                    if slot_end <= win_start or slot_start >= win_end:
+                    # Keep only slots fully inside the configured schedule window.
+                    if slot_start < schedule.start_time or slot_end > schedule.end_time:
                         continue
+
+                    allowed_slots_by_key[key].add(slot_value)
 
                     availability, created = DoctorAvailability.objects.get_or_create(
                         doctor=doctor,
@@ -209,9 +170,92 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
                         },
                     )
 
+                    # Re-activate normal generated slots if they were previously disabled.
                     if not created and not availability.is_exception and not availability.is_booked and not availability.is_available:
                         availability.is_available = True
                         availability.save(update_fields=['is_available', 'updated_at'])
+        else:
+            # Legacy fallback: derive from DoctorHospital when weekly rows do not exist.
+            for schedule in doctor_hospital_schedules:
+                days = schedule.consultation_days or []
+                weekdays_for_schedule = {
+                    normalize_weekday(day_label)
+                    for day_label in days
+                    if normalize_weekday(day_label) is not None
+                }
+
+                if weekday not in weekdays_for_schedule:
+                    continue
+
+                key = (schedule.hospital_id, current_date)
+                allowed_slots_by_key.setdefault(key, set())
+
+                exception = exception_map.get((schedule.hospital_id, current_date))
+                if exception:
+                    if not exception.is_available:
+                        DoctorAvailability.objects.filter(
+                            doctor=doctor,
+                            hospital_id=schedule.hospital_id,
+                            date=current_date,
+                            is_exception=False,
+                            is_booked=False,
+                        ).update(is_available=False)
+                    continue
+
+                time_windows = []
+                if schedule.morning_start and schedule.morning_end:
+                    time_windows.append((schedule.morning_start, schedule.morning_end))
+                if schedule.evening_start and schedule.evening_end:
+                    time_windows.append((schedule.evening_start, schedule.evening_end))
+
+                for win_start, win_end in time_windows:
+                    for slot_value, slot_start, slot_end in slot_windows:
+                        # Keep only slots fully inside each configured window.
+                        if slot_start < win_start or slot_end > win_end:
+                            continue
+
+                        allowed_slots_by_key[key].add(slot_value)
+
+                        availability, created = DoctorAvailability.objects.get_or_create(
+                            doctor=doctor,
+                            hospital_id=schedule.hospital_id,
+                            date=current_date,
+                            time_slot=slot_value,
+                            defaults={
+                                'is_available': True,
+                                'is_booked': False,
+                                'is_exception': False,
+                            },
+                        )
+
+                        if not created and not availability.is_exception and not availability.is_booked and not availability.is_available:
+                            availability.is_available = True
+                            availability.save(update_fields=['is_available', 'updated_at'])
+
+    # Deactivate stale non-booked auto-generated slots that no longer fit active schedules.
+    existing_availabilities = DoctorAvailability.objects.filter(
+        doctor=doctor,
+        date__gte=start_date,
+        date__lte=end_date,
+        is_exception=False,
+        is_booked=False,
+    )
+
+    stale_ids = []
+    reactivate_ids = []
+    for availability in existing_availabilities:
+        allowed_slots = allowed_slots_by_key.get((availability.hospital_id, availability.date), set())
+        should_be_available = availability.time_slot in allowed_slots
+
+        if should_be_available and not availability.is_available:
+            reactivate_ids.append(availability.id)
+        elif not should_be_available and availability.is_available:
+            stale_ids.append(availability.id)
+
+    if stale_ids:
+        DoctorAvailability.objects.filter(id__in=stale_ids).update(is_available=False)
+    if reactivate_ids:
+        DoctorAvailability.objects.filter(id__in=reactivate_ids).update(is_available=True)
 
 
 def _sync_doctor_earning(appointment):
@@ -223,9 +267,15 @@ def _sync_doctor_earning(appointment):
             hospital=appointment.hospital,
         ) or Decimal('0.00')
 
+    commission_rate = appointment.doctor.commission_rate
+    platform_commission = (consultation_amount * commission_rate) / 100
+    doctor_amount = consultation_amount - platform_commission
+
     earning_defaults = {
         'total_amount': consultation_amount,
-        'commission_rate': appointment.doctor.commission_rate,
+        'commission_rate': commission_rate,
+        'platform_commission': platform_commission,
+        'doctor_amount': doctor_amount,
         'month': timezone.now().month,
         'year': timezone.now().year,
     }
@@ -244,13 +294,9 @@ def _sync_doctor_earning(appointment):
                 fields_to_update.append(field_name)
 
         if fields_to_update:
-            doctor_earning.calculate_earnings()
-            fields_to_update.extend(['platform_commission', 'doctor_amount'])
             doctor_earning.save(update_fields=list(dict.fromkeys(fields_to_update)))
         return doctor_earning
 
-    doctor_earning.calculate_earnings()
-    doctor_earning.save()
     return doctor_earning
 
 
@@ -350,7 +396,7 @@ def book_appointment(request, doctor_id):
                 'hospital': availability.hospital,
                 'date': availability.date,
                 'time_slot': _availability_time_slot_value(availability),
-                'consultation_type': current_booking.get('consultation_type') or 'in_person',
+                'consultation_type': 'in_person',
                 'payment_method': (current_booking.get('payment_method') or '').lower(),
                 'status': 'pending',
                 'symptoms': current_booking.get('symptoms', ''),
@@ -418,8 +464,7 @@ def book_appointment(request, doctor_id):
     if not selected_hospital:
         selected_hospital = hospitals.first()
 
-    consultation_type = booking.get('consultation_type')
-    context['consultation_type_label'] = 'Online Consultation' if consultation_type == 'online' else 'In-Person Consultation'
+    context['consultation_type_label'] = 'In-Person Consultation'
     context['selected_hospital'] = selected_hospital
     
     # Handle form submissions
@@ -430,7 +475,7 @@ def book_appointment(request, doctor_id):
             # Save appointment selection to session
             availability_id = request.POST.get('availability_id')
             hospital_id = request.POST.get('hospital_id')
-            consultation_type = request.POST.get('consultation_type', 'in_person')
+            consultation_type = 'in_person'
             
             # Validate selection
             if not availability_id:
@@ -688,7 +733,7 @@ def add_to_cart(request, availability_id):
     )
     
     # Get consultation type
-    consultation_type = request.POST.get('consultation_type', 'in_person')
+    consultation_type = 'in_person'
     symptoms = request.POST.get('symptoms', '')
     
     # Calculate fees
@@ -773,7 +818,7 @@ def checkout(request):
                     hospital=item.hospital,
                     date=item.availability.date,
                     time_slot=item.availability.time_slot,
-                    consultation_type=item.consultation_type,
+                    consultation_type='in_person',
                     symptoms=item.symptoms,
                     consultation_fee=item.consultation_fee,
                     service_fee=item.service_fee
@@ -884,7 +929,7 @@ def appointment_detail(request, appointment_id):
     total_amount_display = appointment.total_amount or Decimal('0.00')
 
     expected_consultation_fee = appointment.doctor.get_consultation_fee(
-        appointment.consultation_type,
+        'in_person',
         hospital=appointment.hospital,
     ) or Decimal('0.00')
 
@@ -1037,7 +1082,7 @@ def reschedule_appointment(request, appointment_id):
 # Doctor views
 @login_required
 def doctor_appointments(request):
-    """View doctor's appointments"""
+    """View doctor's appointments with doctor-specific status from history"""
     if not request.user.is_doctor():
         messages.error(request, 'Only doctors can view this page.')
         return redirect('home')
@@ -1047,27 +1092,42 @@ def doctor_appointments(request):
     except:
         messages.error(request, 'Doctor profile not found.')
         return redirect('home')
+
+    def _get_doctor_status(appt):
+        """Get doctor's action status from history"""
+        histories = appt.history.filter(changed_by=request.user).order_by('-created_at')
+        if histories.exists():
+            return histories.first().status_to
+        return 'pending'
     
     # Today's appointments
-    today_appointments = Appointment.objects.filter(
+    today_appointments = list(Appointment.objects.filter(
         doctor=doctor,
         date=date.today()
-    ).order_by('time_slot')
+    ).prefetch_related('history__changed_by').order_by('time_slot'))
+    
+    # Attach doctor_status to each appointment
+    for appt in today_appointments:
+        appt.doctor_status = _get_doctor_status(appt)
     
     # Upcoming appointments
-    upcoming = Appointment.objects.filter(
+    upcoming = list(Appointment.objects.filter(
         doctor=doctor,
-        date__gt=date.today(),
-        status__in=['pending', 'confirmed']
-    ).order_by('date', 'time_slot')
+        date__gt=date.today()
+    ).prefetch_related('history__changed_by').order_by('date', 'time_slot'))
+    
+    for appt in upcoming:
+        appt.doctor_status = _get_doctor_status(appt)
     
     # Past appointments
-    past = Appointment.objects.filter(
+    past = list(Appointment.objects.filter(
         doctor=doctor
     ).exclude(
-        date__gte=date.today(),
-        status__in=['pending', 'confirmed']
-    ).order_by('-date', '-time_slot')[:10]
+        date__gte=date.today()
+    ).prefetch_related('history__changed_by').order_by('-date', '-time_slot')[:10])
+    
+    for appt in past:
+        appt.doctor_status = _get_doctor_status(appt)
 
     # Get hospitals associated with the doctor
     from doctors.models import DoctorHospital

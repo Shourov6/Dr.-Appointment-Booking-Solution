@@ -37,7 +37,7 @@ if appointments.count() == 0:
                     doctor=doctor,
                     date=appt_date,
                     time_slot=('09:00 AM', '10:30 AM', '02:00 PM')[status_idx],
-                    consultation_type=('online', 'in-person', 'online')[status_idx],
+                    consultation_type='in_person',
                     consultation_fee=500,
                     service_fee=100,
                     total_amount=600,

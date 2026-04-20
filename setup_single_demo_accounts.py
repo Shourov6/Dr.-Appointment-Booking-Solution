@@ -118,7 +118,7 @@ def create_doctor_account():
         is_verified=True,
         is_active=True,
         bmdc_number='BMDC12345',
-        consultation_fee_online=500,
+        consultation_fee_online=0,
         consultation_fee_in_person=750,
         experience_years=5,
         qualifications='MBBS, MD Cardiology',

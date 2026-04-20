@@ -22,6 +22,10 @@
                             <h4 class="fw-bold text-primary">DrSeba.com</h4>
                             <p class="text-muted mb-0">Dhaka, Bangladesh</p>
                             <p class="text-muted mb-0">info@drseba.com</p>
+                            <div class="mt-3">
+                                <small class="text-muted">Appointment ID</small>
+                                <p class="fw-bold text-primary mb-0">APT-{{ appointment.id|stringformat:"05d" }}</p>
+                            </div>
                         </div>
                         <div class="col-md-6 text-md-end">
                             <h5 class="fw-bold">{{ invoice.invoice_number }}</h5>
@@ -57,7 +61,7 @@
                             <tr>
                                 <td>
                                     <strong>Consultation Fee</strong><br>
-                                    <small class="text-muted">{{ appointment.get_consultation_type_display }} consultation</small>
+                                    <small class="text-muted">In-person consultation</small>
                                 </td>
                                 <td class="text-end">৳ {{ invoice.consultation_fee }}</td>
                             </tr>

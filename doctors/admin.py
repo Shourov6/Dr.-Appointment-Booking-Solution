@@ -76,7 +76,7 @@ class DoctorAdmin(admin.ModelAdmin):
             'fields': ('bmdc_number', 'specialties', 'qualifications', 'experience_years', 'about')
         }),
         ('Consultation Fees', {
-            'fields': ('consultation_fee_online', 'consultation_fee_in_person', 'commission_rate')
+            'fields': ('consultation_fee_in_person', 'commission_rate')
         }),
         ('Verification & Status', {
             'fields': ('is_verified', 'verification_date', 'is_active')

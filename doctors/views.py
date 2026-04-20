@@ -12,11 +12,20 @@ from django.utils.text import slugify
 import re
 from .models import Doctor, Specialty, Hospital, Review, DoctorAvailability
 from .forms import ReviewForm
+from .schedule_display import attach_schedule_display
 
 
 def _normalized_slug_token(value):
     """Return lowercase alnum token for robust slug comparisons."""
     return re.sub(r'[^a-z0-9]', '', slugify(value or ''))
+
+
+def _search_tokens(value):
+    """Normalize search text and remove common doctor prefixes from tokens."""
+    cleaned = re.sub(r'[^\w\s]', ' ', value or '').strip().lower()
+    raw_tokens = [token for token in cleaned.split() if token]
+    filtered = [token for token in raw_tokens if token not in {'dr', 'doctor'}]
+    return filtered or raw_tokens
 
 
 def doctor_list(request):
@@ -34,9 +43,13 @@ def doctor_list(request):
     hospital_id = request.GET.get('hospital')
     consultation_type = request.GET.get('type')
     min_price = request.GET.get('min_price')
-    max_price = request.GET.get('max_price')
+    max_price = request.GET.get('fee_range')  # Changed from max_price to fee_range
     search_query = request.GET.get('q', '')
-    district = request.GET.get('district')
+    gender = request.GET.get('gender')
+    available_today = request.GET.get('available_today')
+    
+    # Handle multiple districts
+    districts = request.GET.getlist('district')  # Get list of all selected districts
     
     # Apply filters
     if specialty_id:
@@ -45,12 +58,18 @@ def doctor_list(request):
     if hospital_id:
         doctors = doctors.filter(hospitals__hospital__id=hospital_id)
     
-    if district:
-        doctors = doctors.filter(hospitals__hospital__district__icontains=district).distinct()
+    # Apply district filter - filter by any of the selected districts
+    if districts:
+        district_query = Q()
+        for district in districts:
+            district_query |= Q(hospitals__hospital__district__icontains=district)
+        doctors = doctors.filter(district_query).distinct()
     
-    if consultation_type == 'online':
-        doctors = doctors.filter(consultation_fee_online__gt=0)
-    elif consultation_type == 'in_person':
+    # Apply gender filter
+    if gender and gender != 'all':
+        doctors = doctors.filter(gender__iexact=gender)
+    
+    if consultation_type:
         doctors = doctors.filter(
             Q(consultation_fee_in_person__gt=0) |
             Q(hospitals__consultation_fee__gt=0)
@@ -58,26 +77,27 @@ def doctor_list(request):
     
     if min_price:
         doctors = doctors.filter(
-            Q(consultation_fee_online__gte=min_price) |
             Q(consultation_fee_in_person__gte=min_price) |
             Q(hospitals__consultation_fee__gte=min_price)
         )
     
     if max_price:
         doctors = doctors.filter(
-            Q(consultation_fee_online__lte=max_price) |
             Q(consultation_fee_in_person__lte=max_price) |
             Q(hospitals__consultation_fee__lte=max_price)
         )
     
     if search_query:
-        doctors = doctors.filter(
-            Q(user__first_name__icontains=search_query) |
-            Q(user__last_name__icontains=search_query) |
-            Q(specialties__name__icontains=search_query) |
-            Q(hospitals__hospital__name__icontains=search_query) |
-            Q(hospitals__hospital__city__icontains=search_query)
-        ).distinct()
+        tokens = _search_tokens(search_query)
+        for token in tokens:
+            doctors = doctors.filter(
+                Q(user__first_name__icontains=token) |
+                Q(user__last_name__icontains=token) |
+                Q(specialties__name__icontains=token) |
+                Q(hospitals__hospital__name__icontains=token) |
+                Q(hospitals__hospital__city__icontains=token)
+            )
+        doctors = doctors.distinct()
 
     doctors = doctors.distinct()
     
@@ -97,6 +117,10 @@ def doctor_list(request):
         'page_obj': page_obj,
         'paginator': paginator,
         'search_query': search_query,
+        'selected_districts': districts,
+        'selected_gender': gender or 'all',
+        'selected_fee': max_price or '5000',
+        'selected_specialty': specialty_id,
     }
     
     return render(request, 'doctors/doctor_list.html', context)
@@ -125,7 +149,12 @@ def doctor_detail(request, pk):
     ).order_by('date', 'time_slot')
     
     # Get hospitals
-    hospitals = doctor.hospitals.filter(is_active=True)
+    hospitals = doctor.hospitals.filter(is_active=True).select_related('hospital').order_by('-is_primary', 'hospital__name')
+    primary_hospital_link = hospitals.first()
+    for hospital_link in hospitals:
+        attach_schedule_display(hospital_link)
+    if primary_hospital_link:
+        primary_hospital_link = attach_schedule_display(primary_hospital_link)
     
     # Process qualifications and support multiple separators.
     qualifications_list = []
@@ -147,6 +176,7 @@ def doctor_detail(request, pk):
         'reviews': reviews,
         'availabilities': availabilities,
         'hospitals': hospitals,
+        'primary_hospital_link': primary_hospital_link,
         'qualifications_list': qualifications_list,
         'is_favorite': is_favorite,
     }
@@ -158,6 +188,9 @@ def doctor_reviews(request, pk):
     """View all reviews for a doctor"""
     doctor = get_object_or_404(Doctor, pk=pk, is_verified=True, is_active=True)
     reviews = doctor.reviews.filter(is_active=True).select_related('patient')
+    primary_hospital_link = doctor.hospitals.filter(is_active=True).select_related('hospital').order_by('-is_primary', 'hospital__name').first()
+    if primary_hospital_link:
+        primary_hospital_link = attach_schedule_display(primary_hospital_link)
     
     # Pagination
     paginator = Paginator(reviews, 10)
@@ -168,6 +201,7 @@ def doctor_reviews(request, pk):
         'doctor': doctor,
         'reviews': page_obj,
         'page_obj': page_obj,
+        'primary_hospital_link': primary_hospital_link,
     }
     
     return render(request, 'doctors/doctor_reviews.html', context)
@@ -298,13 +332,17 @@ def search_suggestions(request):
     if len(query) < 2:
         return JsonResponse({'suggestions': []})
     
-    # Search doctors
+    # Search doctors (supports full names like "Dr. John Doe")
     doctors = Doctor.objects.filter(
-        Q(user__first_name__icontains=query) |
-        Q(user__last_name__icontains=query),
         is_verified=True,
         is_active=True
-    )[:5]
+    )
+    for token in _search_tokens(query):
+        doctors = doctors.filter(
+            Q(user__first_name__icontains=token) |
+            Q(user__last_name__icontains=token)
+        )
+    doctors = doctors[:5]
     
     # Search specialties
     specialties = Specialty.objects.filter(

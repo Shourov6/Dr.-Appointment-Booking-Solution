@@ -124,7 +124,7 @@ def create_enhanced_doctors(hospitals, specializations):
                 qualifications='MBBS, MD',
                 experience_years=random.randint(5, 20),
                 about=f'Experienced {data["specialty"]} specialist',
-                consultation_fee_online=Decimal(str(random.choice([300, 400, 500, 600]))),
+                    consultation_fee_online=Decimal('0'),
                 consultation_fee_in_person=Decimal(str(random.choice([600, 800, 1000, 1200]))),
                 is_verified=True,
                 is_active=True,
@@ -214,7 +214,7 @@ def create_comprehensive_appointments(patients, doctors):
                     doctor=doctor,
                     date=appt_date,
                     time_slot=f"{random.randint(9, 16)}:00 - {random.randint(9, 16)+1}:00",
-                    consultation_type=random.choice(['online', 'in_person']),
+                    consultation_type='in_person',
                     reason=random.choice(['Routine checkup', 'Symptoms consultation', 'Follow-up', 'Medical report review']),
                     status=status,
                     is_paid=(status == 'completed' or random.choice([True, False]))

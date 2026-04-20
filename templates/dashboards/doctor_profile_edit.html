@@ -80,14 +80,6 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="id_consultation_fee_online">Online Consultation Fee</label>
-                                {{ form.consultation_fee_online }}
-                                {% if form.consultation_fee_online.errors %}
-                                    <div class="text-danger small mt-1">{{ form.consultation_fee_online.errors|striptags }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="id_consultation_fee_in_person">In-Person Consultation Fee</label>
                                 {{ form.consultation_fee_in_person }}
                                 {% if form.consultation_fee_in_person.errors %}

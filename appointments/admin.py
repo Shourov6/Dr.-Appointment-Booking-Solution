@@ -10,9 +10,9 @@ class AppointmentAdmin(admin.ModelAdmin):
     """Appointment Admin"""
     list_display = [
         'id', 'patient', 'doctor', 'date', 'time_slot', 
-        'consultation_type', 'status', 'is_paid', 'total_amount', 'created_at'
+        'status', 'is_paid', 'total_amount', 'created_at'
     ]
-    list_filter = ['status', 'consultation_type', 'is_paid', 'date', 'created_at']
+    list_filter = ['status', 'is_paid', 'date', 'created_at']
     search_fields = [
         'patient__username', 'patient__first_name', 
         'doctor__user__first_name', 'doctor__user__last_name'
@@ -27,7 +27,7 @@ class AppointmentAdmin(admin.ModelAdmin):
             'fields': ('date', 'time_slot')
         }),
         ('Consultation', {
-            'fields': ('consultation_type', 'symptoms', 'meeting_link')
+            'fields': ('symptoms',)
         }),
         ('Status & Payment', {
             'fields': ('status', 'is_paid', 'payment_method')
@@ -53,8 +53,8 @@ class AppointmentAdmin(admin.ModelAdmin):
 @admin.register(CartItem)
 class CartItemAdmin(admin.ModelAdmin):
     """Cart Item Admin"""
-    list_display = ['patient', 'doctor', 'hospital', 'consultation_type', 'get_total', 'created_at']
-    list_filter = ['consultation_type', 'created_at']
+    list_display = ['patient', 'doctor', 'hospital', 'get_total', 'created_at']
+    list_filter = ['created_at']
     search_fields = ['patient__username', 'doctor__user__first_name']
 
 

@@ -22,7 +22,6 @@ class DoctorAdminCreationForm(forms.ModelForm):
     about = forms.CharField(widget=forms.Textarea, required=False)
     profile_picture = forms.ImageField(required=False)
     cover_image = forms.ImageField(required=False)
-    consultation_fee_online = forms.DecimalField(max_digits=10, decimal_places=2, required=True)
     consultation_fee_in_person = forms.DecimalField(max_digits=10, decimal_places=2, required=True)
     is_verified = forms.BooleanField(required=False)
     is_active = forms.BooleanField(required=False, initial=True)
@@ -32,7 +31,7 @@ class DoctorAdminCreationForm(forms.ModelForm):
         fields = [
             'first_name', 'last_name', 'email', 'phone', 'password', 'confirm_password',
             'bmdc_number', 'specialties', 'qualifications', 'experience_years', 'about',
-            'profile_picture', 'cover_image', 'consultation_fee_online', 'consultation_fee_in_person',
+            'profile_picture', 'cover_image', 'consultation_fee_in_person',
             'is_verified', 'is_active'
         ]
 
@@ -70,7 +69,7 @@ class DoctorAdminCreationForm(forms.ModelForm):
             qualifications=self.cleaned_data['qualifications'],
             experience_years=self.cleaned_data['experience_years'],
             about=self.cleaned_data['about'],
-            consultation_fee_online=self.cleaned_data['consultation_fee_online'],
+            consultation_fee_online=0,
             consultation_fee_in_person=self.cleaned_data['consultation_fee_in_person'],
             is_verified=self.cleaned_data.get('is_verified', False),
             is_active=self.cleaned_data.get('is_active', True),

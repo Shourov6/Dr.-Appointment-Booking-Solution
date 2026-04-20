@@ -23,7 +23,6 @@ class Appointment(models.Model):
     
     # Consultation type
     CONSULTATION_TYPE = [
-        ('online', 'Online'),
         ('in_person', 'In Person'),
     ]
     
@@ -67,8 +66,8 @@ class Appointment(models.Model):
     is_paid = models.BooleanField(default=False)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, blank=True)
     
-    # Online consultation
-    meeting_link = models.URLField(blank=True, help_text="Video call link for online consultations")
+    # Legacy field retained for backward compatibility
+    meeting_link = models.URLField(blank=True, help_text="Unused: in-person consultations only")
     
     # Distribution/Assignment to employee
     assigned_to = models.ForeignKey(
@@ -109,6 +108,9 @@ class Appointment(models.Model):
         return self.total_amount
     
     def save(self, *args, **kwargs):
+        # Enforce in-person-only consultation mode.
+        self.consultation_type = 'in_person'
+
         # Calculate total if not set or is zero
         if self.total_amount is None or self.total_amount == 0:
             self.calculate_total()
@@ -156,6 +158,10 @@ class CartItem(models.Model):
     def get_total(self):
         """Get total amount"""
         return self.consultation_fee + self.service_fee
+
+    def save(self, *args, **kwargs):
+        self.consultation_type = 'in_person'
+        super().save(*args, **kwargs)
 
 
 class AppointmentHistory(models.Model):

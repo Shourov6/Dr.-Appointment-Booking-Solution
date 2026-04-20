@@ -79,7 +79,7 @@ def create_sample_data():
             qualifications='MBBS, MD (Cardiology) - Dhaka Medical College',
             experience_years=15,
             about='Experienced cardiologist with expertise in interventional cardiology.',
-            consultation_fee_online=500,
+            consultation_fee_online=0,
             consultation_fee_in_person=800,
             is_verified=True
         )

@@ -69,7 +69,7 @@ TRANSLATIONS = {
         'book_appointment': 'Book Appointment',
         'book_appointment_desc': 'Choose your preferred date and time slot',
         'visit_doctor': 'Visit Doctor',
-        'visit_doctor_desc': 'Get consultation online or visit the chamber',
+        'visit_doctor_desc': 'Visit the doctor at the chamber for consultation',
         
         # Partner Hospitals
         'partner_hospitals_title': 'Our Partner Hospitals',
@@ -109,7 +109,7 @@ TRANSLATIONS = {
         'patient_name': 'Patient Name',
         'status': 'Status',
         'type': 'Type',
-        'online': 'Online',
+        'online': 'In Person',
         'in_person': 'In Person',
         'confirmed': 'Confirmed',
         'pending': 'Pending',
@@ -240,7 +240,7 @@ TRANSLATIONS = {
         'patient_name': 'রোগীর নাম',
         'status': 'অবস্থা',
         'type': 'ধরন',
-        'online': 'অনলাইন',
+        'online': 'সরাসরি',
         'in_person': 'সরাসরি',
         'confirmed': 'নিশ্চিত',
         'pending': 'বিবেচনাধীন',

@@ -35,14 +35,13 @@ class DoctorProfileForm(forms.ModelForm):
         model = Doctor
         fields = [
             'qualifications', 'experience_years', 'about',
-            'consultation_fee_online', 'consultation_fee_in_person',
+            'consultation_fee_in_person',
             'profile_picture', 'cover_image'
         ]
         widgets = {
             'qualifications': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'experience_years': forms.NumberInput(attrs={'class': 'form-control'}),
             'about': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
-            'consultation_fee_online': forms.NumberInput(attrs={'class': 'form-control'}),
             'consultation_fee_in_person': forms.NumberInput(attrs={'class': 'form-control'}),
             'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),
             'cover_image': forms.FileInput(attrs={'class': 'form-control'}),
