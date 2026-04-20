@@ -48,7 +48,8 @@ class User(AbstractUser):
         return self.role == 'doctor'
     
     def is_super_admin(self):
-        return self.role == 'admin'
+        # Treat Django superusers as super admins even if role was not explicitly set.
+        return self.role == 'admin' or self.is_superuser
     
     def is_employee(self):
         return self.role == 'employee'

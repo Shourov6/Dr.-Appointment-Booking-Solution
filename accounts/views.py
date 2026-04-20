@@ -37,7 +37,7 @@ def login_view(request):
                 if normalized_phone:
                     user = User.objects.filter(phone=normalized_phone).first()
                 if not user:
-                    user = User.objects.filter(username__iexact=identifier, role='admin').first()
+                    user = User.objects.filter(username__iexact=identifier).first()
 
             if not user:
                 messages.error(request, 'No account found for that mobile number or Gmail address.')

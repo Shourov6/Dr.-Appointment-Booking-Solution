@@ -68,15 +68,23 @@ def dashboard_index(request):
 @login_required
 def patient_dashboard(request):
     """Patient dashboard"""
-    if not request.user.is_patient():
+    is_admin_patient_view = request.user.is_super_admin()
+    if not (request.user.is_patient() or is_admin_patient_view):
         messages.error(request, 'Access denied.')
         return redirect('home')
-    
+
     # Get patient profile
-    try:
-        profile = request.user.patient_profile
-    except PatientProfile.DoesNotExist:
-        profile = PatientProfile.objects.create(user=request.user)
+    profile = None
+    if request.user.is_patient():
+        try:
+            profile = request.user.patient_profile
+        except PatientProfile.DoesNotExist:
+            profile = PatientProfile.objects.create(user=request.user)
+    else:
+        try:
+            profile = request.user.patient_profile
+        except PatientProfile.DoesNotExist:
+            profile = None
     
     # Upcoming appointments
     upcoming_appointments = Appointment.objects.filter(
@@ -98,7 +106,7 @@ def patient_dashboard(request):
     cart_items = CartItem.objects.filter(patient=request.user)
     
     # Favorite doctors
-    favorite_doctors = profile.favorite_doctors.all()[:4]
+    favorite_doctors = profile.favorite_doctors.all()[:4] if profile else Doctor.objects.none()
     
     # Recent payments
     recent_payments = Payment.objects.filter(
@@ -113,6 +121,7 @@ def patient_dashboard(request):
         'favorite_doctors': favorite_doctors,
         'recent_payments': recent_payments,
         'profile': profile,
+        'is_admin_patient_view': is_admin_patient_view,
     }
     
     return render(request, 'dashboards/patient_dashboard.html', context)
