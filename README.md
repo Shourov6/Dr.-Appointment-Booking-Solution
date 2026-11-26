@@ -54,6 +54,16 @@ python manage.py create_demo_data
 
 Never commit `.env` or paste database credentials into source code.
 
+## Render deployment
+
+Set the Render build command to `pip install -r requirements.txt` and the start command to:
+
+```bash
+gunicorn drseba.wsgi:application --bind 0.0.0.0:$PORT
+```
+
+Configure `SECRET_KEY`, `DEBUG=False`, `ALLOWED_HOSTS`, and your production database settings as Render environment variables. Do not use the development demo accounts in production.
+
 ## Demo login
 
 When `DEBUG=True`, the login page displays demo accounts and supports click-to-fill. After running `create_demo_data`, the demo accounts share the password configured by `DEMO_LOGIN_PASSWORD` (defaults to `DemoLogin123!` for local development):
