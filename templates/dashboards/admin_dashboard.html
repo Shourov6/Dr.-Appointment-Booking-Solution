@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Admin Dashboard - DrSeba.com{% endblock %}
+{% block title %}Admin Dashboard - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container-fluid" style="background-color: #f8f9fa; min-height: 100vh;">
@@ -13,7 +13,7 @@
                     <div class="d-flex align-items-center">
                         <div class="bg-primary rounded d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px; font-weight: bold; color: white;">DS</div>
                         <div>
-                            <h6 class="mb-0 fw-bold">DrSeba.com</h6>
+                            <h6 class="mb-0 fw-bold">Dr. Appointment Booking Solution</h6>
                             <small class="text-muted">Admin Panel</small>
                         </div>
                     </div>
@@ -22,11 +22,9 @@
                 <!-- User Section -->
                 <div class="mb-4 pb-3 border-bottom">
                     <div class="d-flex align-items-center">
-                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px;">
-                            <span class="fw-bold text-primary">A</span>
-                        </div>
+                        <img src="{{ STATIC_URL }}img/default-user.png" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover;" alt="Admin avatar">
                         <div>
-                            <h6 class="mb-0 small fw-bold">Admin User</h6>
+                            <h6 class="mb-0 small fw-bold">{{ request.user.get_full_name|default:request.user.username }}</h6>
                             <small class="text-muted">Admin</small>
                         </div>
                     </div>
@@ -73,7 +71,7 @@
                 <div class="mb-4 d-flex justify-content-between align-items-center dashboard-hero-card">
                     <div>
                         <h4 class="fw-bold mb-1 dashboard-hero-title">Admin Dashboard</h4>
-                        <p class="dashboard-hero-subtitle">Welcome back, Admin</p>
+                        <p class="dashboard-hero-subtitle">Welcome back, {{ request.user.first_name|default:request.user.username }}</p>
                     </div>
                     <div class="dropdown notification-dropdown-wrap">
                         <button class="btn notification-bell-btn {% if unread_notifications_count > 0 %}has-unread{% endif %}" type="button" id="adminNotificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Admin notifications">
@@ -132,8 +130,10 @@
                                         <p class="text-muted mb-1 small">Active Doctors</p>
                                         <h3 class="fw-bold mb-2">{{ total_doctors }}</h3>
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-arrow-up" style="color: #28A745; font-size: 0.9rem;"></i>
-                                            <span class="small" style="color: #28A745;">+12.5%</span>
+                                            <i class="bi {% if doctors_change_pct >= 0 %}bi-arrow-up{% else %}bi-arrow-down{% endif %}" style="color: {% if doctors_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %}; font-size: 0.9rem;"></i>
+                                            <span class="small" style="color: {% if doctors_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %};">
+                                                {% if doctors_change_pct > 0 %}+{% endif %}{{ doctors_change_pct|floatformat:1 }}%
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="bg-light rounded-3 p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
@@ -153,8 +153,10 @@
                                         <p class="text-muted mb-1 small">Appointments</p>
                                         <h3 class="fw-bold mb-2">{{ total_appointments }}</h3>
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-arrow-up" style="color: #28A745; font-size: 0.9rem;"></i>
-                                            <span class="small" style="color: #28A745;">+8.2%</span>
+                                            <i class="bi {% if appointments_change_pct >= 0 %}bi-arrow-up{% else %}bi-arrow-down{% endif %}" style="color: {% if appointments_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %}; font-size: 0.9rem;"></i>
+                                            <span class="small" style="color: {% if appointments_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %};">
+                                                {% if appointments_change_pct > 0 %}+{% endif %}{{ appointments_change_pct|floatformat:1 }}%
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="bg-light rounded-3 p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
@@ -174,8 +176,10 @@
                                         <p class="text-muted mb-1 small">Total Revenue</p>
                                         <h3 class="fw-bold mb-2">৳{{ total_revenue|floatformat:0 }}</h3>
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-arrow-up" style="color: #28A745; font-size: 0.9rem;"></i>
-                                            <span class="small" style="color: #28A745;">+23.1%</span>
+                                            <i class="bi {% if revenue_change_pct >= 0 %}bi-arrow-up{% else %}bi-arrow-down{% endif %}" style="color: {% if revenue_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %}; font-size: 0.9rem;"></i>
+                                            <span class="small" style="color: {% if revenue_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %};">
+                                                {% if revenue_change_pct > 0 %}+{% endif %}{{ revenue_change_pct|floatformat:1 }}%
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="bg-light rounded-3 p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
@@ -195,8 +199,10 @@
                                         <p class="text-muted mb-1 small">Total Patients</p>
                                         <h3 class="fw-bold mb-2">{{ total_patients }}</h3>
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-arrow-down" style="color: #DC3545; font-size: 0.9rem;"></i>
-                                            <span class="small" style="color: #DC3545;">-2.4%</span>
+                                            <i class="bi {% if patients_change_pct >= 0 %}bi-arrow-up{% else %}bi-arrow-down{% endif %}" style="color: {% if patients_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %}; font-size: 0.9rem;"></i>
+                                            <span class="small" style="color: {% if patients_change_pct >= 0 %}#28A745{% else %}#DC3545{% endif %};">
+                                                {% if patients_change_pct > 0 %}+{% endif %}{{ patients_change_pct|floatformat:1 }}%
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="bg-light rounded-3 p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
@@ -230,18 +236,26 @@
                                 <div class="list-group list-group-flush">
                                     {% for appt in recent_appointments %}
                                     <div class="list-group-item px-4 py-3 border-bottom">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-1">
-                                                <small class="text-primary fw-bold">APT-{{ appt.id|stringformat:"05d" }}</small>
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                            <div class="appointment-main">
+                                                <small class="text-primary fw-bold d-block mb-1">APT-{{ appt.id|stringformat:"05d" }}</small>
+                                                <h6 class="mb-0 fw-bold">
+                                                    {% if appt.patient %}
+                                                        {{ appt.patient.get_full_name|default:appt.patient.username }}
+                                                    {% else %}
+                                                        {{ appt.guest_full_name|default:"Guest Patient" }}
+                                                    {% endif %}
+                                                </h6>
+                                                <small class="text-muted d-block">
+                                                    {% if appt.doctor %}
+                                                        {{ appt.doctor.get_full_name|default:appt.doctor.user.get_full_name }}
+                                                    {% else %}
+                                                        Doctor not assigned
+                                                    {% endif %}
+                                                </small>
                                             </div>
-                                            <div class="col-md-3">
-                                                <h6 class="mb-0 fw-bold">{{ appt.patient.get_full_name }}</h6>
-                                                <small class="text-muted">{{ appt.doctor.get_full_name }}</small>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <small class="text-muted">{{ appt.date|date:"M d, Y" }}</small>
-                                            </div>
-                                            <div class="col-md-2">
+                                            <div class="appointment-meta text-md-end">
+                                                <small class="text-muted d-block mb-1">{{ appt.date|date:"M d, Y" }}</small>
                                                 {% if appt.status == 'confirmed' %}
                                                 <span class="badge bg-success">Confirmed</span>
                                                 {% elif appt.status == 'pending' %}
@@ -251,8 +265,8 @@
                                                 {% else %}
                                                 <span class="badge bg-secondary">{{ appt.status|title }}</span>
                                                 {% endif %}
+                                                <div class="fw-bold mt-1">৳{{ appt.total_amount|floatformat:2 }}</div>
                                             </div>
-                                            <div class="col-md-2 text-end fw-bold">৳{{ appt.total_amount }}</div>
                                         </div>
                                     </div>
                                     {% empty %}
@@ -273,26 +287,9 @@
                                 <div class="list-group list-group-flush">
                                     {% for patient in recent_patients %}
                                     <a href="{% url 'dashboard:admin_patient_detail' patient.id %}" class="list-group-item px-4 py-3 border-bottom text-decoration-none text-dark patient-list-item">
-                                        </div>
-                                        <style>
-                                        .patient-list-item {
-                                            transition: background 0.2s, box-shadow 0.2s;
-                                            border-radius: 4px;
-                                        }
-                                        .patient-list-item:hover, .patient-list-item:focus {
-                                            background: #e9f3ff !important;
-                                            box-shadow: 0 2px 8px rgba(10, 116, 218, 0.08);
-                                            color: #0A74DA !important;
-                                            text-decoration: none;
-                                        }
-                                        .patient-list-item:active {
-                                            background: #d0e7ff !important;
-                                            color: #0A74DA !important;
-                                        }
-                                        </style>
                                         <div class="row align-items-center">
                                             <div class="col-md-7">
-                                                <h6 class="mb-0 fw-bold">{{ patient.get_full_name }}</h6>
+                                                <h6 class="mb-0 fw-bold">{{ patient.get_full_name|default:patient.username }}</h6>
                                                 <small class="text-muted">{{ patient.email }}</small>
                                             </div>
                                             <div class="col-md-5 text-end">
@@ -331,6 +328,32 @@ document.addEventListener('DOMContentLoaded', function () {
 <style>
 .list-group-item:hover {
     background-color: #f8f9fa;
+}
+
+.appointment-main {
+    min-width: 220px;
+}
+
+.appointment-meta {
+    min-width: 120px;
+}
+
+.patient-list-item {
+    transition: background 0.2s, box-shadow 0.2s;
+    border-radius: 4px;
+}
+
+.patient-list-item:hover,
+.patient-list-item:focus {
+    background: #e9f3ff !important;
+    box-shadow: 0 2px 8px rgba(10, 116, 218, 0.08);
+    color: #0A74DA !important;
+    text-decoration: none;
+}
+
+.patient-list-item:active {
+    background: #d0e7ff !important;
+    color: #0A74DA !important;
 }
 
 .notification-dropdown-wrap {

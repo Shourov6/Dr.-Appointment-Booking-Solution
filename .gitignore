@@ -26,6 +26,9 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+*.lnk
+drseba-intelligent-doctor-recommendation-main/data/Dr.Seba_500_Organized_Final.xlsx
+drseba-intelligent-doctor-recommendation-main/models/doctor_ai_full_package.pkl
 
 # Backup files
 *.bak

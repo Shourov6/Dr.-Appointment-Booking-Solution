@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Best Doctor For You - Dr. Appointment Booking Solution{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reco-hero {
+        background: linear-gradient(135deg, #e6f3ff 0%, #f8fbff 100%);
+        border: 1px solid #d7e8fa;
+        border-radius: 16px;
+        padding: 1.5rem;
+    }
+    .reco-filter-card,
+    .reco-result-card {
+        border: 1px solid #e7edf5;
+        border-radius: 14px;
+    }
+    .reco-rank {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #0A74DA;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="py-4 py-md-5">
+    <div class="container">
+        <div class="reco-hero mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <h2 class="fw-bold mb-2">Best Doctor For You</h2>
+                    <p class="mb-0 text-muted">Find the most suitable doctors based on your location, budget, and preferences.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge bg-primary">Integrated</span>
+                    <span class="badge bg-success">Live Search</span>
+                    <span class="badge bg-info text-dark">{{ scoring_mode|title }} Ranking</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card reco-filter-card shadow-sm">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                        <h5 class="fw-bold mb-0">Search Filters</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" class="row g-3">
+                            {% csrf_token %}
+                            <div class="col-12">
+                                <label for="district" class="form-label">District</label>
+                                <select id="district" name="district" class="form-select" required>
+                                    <option value="">Select District</option>
+                                    {% for district in districts %}
+                                    <option value="{{ district }}" {% if district == selected_district %}selected{% endif %}>{{ district }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="thana" class="form-label">Thana/Area</label>
+                                <select id="thana" name="thana" class="form-select" required>
+                                    <option value="">Select Thana</option>
+                                    {% for thana in thanas %}
+                                    <option value="{{ thana }}" {% if thana == selected_thana %}selected{% endif %}>{{ thana }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="specialization" class="form-label">Specialization</label>
+                                <select id="specialization" name="specialization" class="form-select" required>
+                                    <option value="">Select Specialization</option>
+                                    {% for spec in specializations %}
+                                    <option value="{{ spec }}" {% if spec == selected_spec %}selected{% endif %}>{{ spec }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="maxFee" class="form-label">Max Consultation Fee (Tk)</label>
+                                <input type="number" id="maxFee" name="maxFee" class="form-control" value="{{ max_fee|default:'2000' }}" min="0" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="topN" class="form-label">Number of Results</label>
+                                <input type="number" id="topN" name="topN" class="form-control" value="{{ top_n|default:'5' }}" min="1" max="20">
+                            </div>
+
+                            <div class="col-12 d-flex flex-column gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="online" name="online" {% if online %}checked{% endif %}>
+                                    <label class="form-check-label" for="online">Online consultation available</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="emergency" name="emergency" {% if emergency %}checked{% endif %}>
+                                    <label class="form-check-label" for="emergency">Emergency service available</label>
+                                </div>
+                            </div>
+
+                            <div class="col-12 d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search me-2"></i>Search Doctors
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                {% if searched and not doctors and not error %}
+                <div class="card reco-result-card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-emoji-frown fs-2 text-muted"></i>
+                        <h5 class="mt-3">No doctors found</h5>
+                        <p class="text-muted mb-0">Try adjusting district, thana, specialization, or max fee.</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if doctors %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">{{ doctors|length }} Doctors Found</h5>
+                    <small class="text-muted">Sorted by recommendation score</small>
+                </div>
+
+                <div class="d-flex flex-column gap-3">
+                    {% for doctor in doctors %}
+                    <div class="card reco-result-card shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between gap-3 flex-wrap">
+                                <div class="d-flex align-items-start gap-3">
+                                    <span class="reco-rank">{{ forloop.counter }}</span>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">{{ doctor.doctor_name }}</h6>
+                                        <p class="text-muted mb-2">{{ doctor.specialization|default:'General Practice' }}</p>
+                                        <p class="mb-0 small text-muted">
+                                            <i class="bi bi-hospital me-1"></i>{{ doctor.hospital_name }}
+                                        </p>
+                                        <p class="mb-0 small text-muted">
+                                            <i class="bi bi-geo-alt me-1"></i>{{ doctor.full_address }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="text-md-end">
+                                    <div class="mb-1"><strong>Rating:</strong> {{ doctor.rating_avg|floatformat:1 }}/5.0</div>
+                                    <div class="mb-1"><strong>Experience:</strong> {{ doctor.experience_years }} years</div>
+                                    <div class="mb-1"><strong>Fee:</strong> Tk {{ doctor.consultation_fees }}</div>
+                                    <span class="badge bg-primary">Score {{ doctor.predicted_score|floatformat:4 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% elif not searched and not error %}
+                <div class="card reco-result-card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-heart-pulse fs-2 text-primary"></i>
+                        <h5 class="mt-3">Ready to find your best doctor</h5>
+                        <p class="text-muted mb-0">Use the filters to get personalized doctor recommendations.</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

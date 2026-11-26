@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Payments - DrSeba.com{% endblock %}
+{% block title %}Payments - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container-fluid" style="background-color: #f8f9fa; min-height: 100vh;">
@@ -13,7 +13,7 @@
                     <div class="d-flex align-items-center">
                         <div class="bg-primary rounded d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px; font-weight: bold; color: white;">DS</div>
                         <div>
-                            <h6 class="mb-0 fw-bold">DrSeba.com</h6>
+                            <h6 class="mb-0 fw-bold">Dr. Appointment Booking Solution</h6>
                             <small class="text-muted">Admin Panel</small>
                         </div>
                     </div>
@@ -156,7 +156,7 @@
                                         <th>Invoice ID</th>
                                         <th>Patient</th>
                                         <th>Doctor</th>
-                                        <th>Amount</th>
+                                        <th>Doctor Fee</th>
                                         <th>Service Charge</th>
                                         <th>Date</th>
                                         <th>Method</th>
@@ -218,7 +218,10 @@
                                         <small class="text-muted">{{ row.invoice_id }} • {{ row.method_display }}</small>
                                     </div>
                                 </div>
-                                <span class="fw-bold">৳{{ row.total_amount|floatformat:2 }}</span>
+                                <div class="text-end">
+                                    <span class="fw-bold d-block">৳{{ row.total_amount|floatformat:2 }}</span>
+                                    <small class="text-muted">Fee ৳{{ row.amount|floatformat:2 }} + Service ৳{{ row.service_charge|floatformat:2 }}</small>
+                                </div>
                             </div>
                             {% empty %}
                             <div class="list-group-item px-0 py-3 text-center text-muted">

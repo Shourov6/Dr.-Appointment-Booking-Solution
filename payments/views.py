@@ -91,7 +91,7 @@ def process_payment(request, appointment_id):
         invoice.save()
         
         # Create doctor earning record
-        doctor_earning = DoctorEarning.objects.create(
+        doctor_earning = DoctorEarning(
             doctor=appointment.doctor,
             appointment=appointment,
             total_amount=appointment.consultation_fee,
@@ -110,6 +110,109 @@ def process_payment(request, appointment_id):
     }
     
     return render(request, 'payments/process_payment.html', context)
+
+
+@login_required
+def batch_checkout(request):
+    """Batch checkout for multiple appointments"""
+    # Get appointment IDs from session
+    appointment_ids = request.session.get('checkout_appointment_ids', [])
+    
+    if not appointment_ids:
+        messages.warning(request, 'No appointments to checkout.')
+        return redirect('appointments:cart')
+    
+    # Get appointments
+    appointments = Appointment.objects.filter(
+        id__in=appointment_ids,
+        patient=request.user,
+        is_paid=False
+    ).select_related('doctor', 'hospital')
+    
+    if not appointments.exists():
+        messages.warning(request, 'No unpaid appointments found.')
+        return redirect('appointments:my_appointments')
+    
+    if request.method == 'POST':
+        payment_method = request.POST.get('payment_method')
+        
+        if not payment_method:
+            messages.error(request, 'Please select a payment method.')
+            return redirect('payments:batch_checkout')
+        
+        with transaction.atomic():
+            for appointment in appointments:
+                # Create payment record for each appointment
+                payment = Payment.objects.create(
+                    appointment=appointment,
+                    amount=appointment.total_amount,
+                    method=payment_method
+                )
+                
+                # Generate transaction ID
+                payment.generate_transaction_id()
+                
+                # For cash on arrival
+                if payment_method == 'cash':
+                    payment.status = 'pending'
+                    payment.save()
+                else:
+                    # For digital payments, mark as completed (simulated)
+                    payment.status = 'completed'
+                    payment.completed_at = timezone.now()
+                    payment.save()
+                    
+                    # Update appointment
+                    appointment.is_paid = True
+                    appointment.payment_method = payment_method
+                    appointment.save()
+                
+                # Create invoice
+                invoice = Invoice.objects.create(
+                    appointment=appointment,
+                    consultation_fee=appointment.consultation_fee,
+                    service_fee=appointment.service_fee,
+                    total_amount=appointment.total_amount,
+                    payment_method=payment_method,
+                    transaction_id=payment.transaction_id,
+                    paid_at=timezone.now() if payment_method != 'cash' else None
+                )
+                invoice.generate_invoice_number()
+                invoice.save()
+                
+                # Create doctor earning record
+                if payment_method != 'cash':
+                    doctor_earning = DoctorEarning(
+                        doctor=appointment.doctor,
+                        appointment=appointment,
+                        total_amount=appointment.consultation_fee,
+                        commission_rate=appointment.doctor.commission_rate,
+                        month=timezone.now().month,
+                        year=timezone.now().year
+                    )
+                    doctor_earning.calculate_earnings()
+                    doctor_earning.save()
+        
+        # Clear session
+        request.session.pop('checkout_appointment_ids', None)
+        
+        if payment_method == 'cash':
+            messages.success(request, f'{len(appointments)} appointments booked! Please pay cash at the hospital.')
+            return redirect('appointments:my_appointments')
+        else:
+            messages.success(request, f'Payment successful for {len(appointments)} appointments!')
+            return redirect('appointments:my_appointments')
+    
+    # Calculate total
+    total = sum(appt.total_amount for appt in appointments)
+    
+    context = {
+        'appointments': appointments,
+        'total': total,
+        'count': len(appointments),
+    }
+    
+    return render(request, 'payments/batch_checkout.html', context)
 
 
 @login_required

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Book Appointment - {{ doctor.user.get_full_name }} - DrSeba.com{% endblock %}
+{% block title %}Book Appointment - {{ doctor.user.get_full_name }} - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container py-5">
@@ -177,12 +177,29 @@
                     <button type="submit" class="btn btn-primary btn-lg">
                         <i class="bi bi-arrow-right me-2"></i>Continue
                     </button>
+
+                    {% if user.is_authenticated %}
+                    <button type="button" class="btn btn-outline-primary btn-lg" id="addToCartBtn" disabled>
+                        <i class="bi bi-cart-plus me-2"></i>Add to Cart
+                    </button>
+                    <small class="text-muted text-center">Save this slot and keep adding more appointments before checkout.</small>
+                    {% endif %}
                 </div>
             </form>
+
+            {% if user.is_authenticated and user.is_patient %}
+            <form method="POST" id="addToCartForm" action="">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'appointments:book_doctor' doctor.id %}?step=1">
+            </form>
+            {% endif %}
 
             <script>
             const availabilitiesData = {{ availabilities_json|safe }};
             let selectedDate = null;
+            const addToCartBtn = document.getElementById('addToCartBtn');
+            const addToCartForm = document.getElementById('addToCartForm');
+            const cartUrlTemplate = "{% url 'appointments:add_to_cart' 0 %}";
 
             const summaryConsultation = document.getElementById('summaryConsultation');
             const summaryHospital = document.getElementById('summaryHospital');
@@ -234,6 +251,9 @@
                 }
                 timeSelection.innerHTML = `<p class="text-muted mb-0">${messageText}</p>`;
                 document.getElementById('availability_id').value = '';
+                if (addToCartBtn) {
+                    addToCartBtn.disabled = true;
+                }
                 updateSummaryDateTime(selectedDate ? formatDateLabel(selectedDate) : null, null);
             }
 
@@ -338,6 +358,9 @@
                         document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
                         this.classList.add('selected');
                         document.getElementById('availability_id').value = this.getAttribute('data-availability-id');
+                        if (addToCartBtn) {
+                            addToCartBtn.disabled = false;
+                        }
                         updateSummaryDateTime(formatDateLabel(selectedDate), this.textContent.trim());
                     });
                 });
@@ -388,6 +411,18 @@
 
             clearTimeSelection();
             renderDateButtonsForHospital();
+
+            if (addToCartBtn && addToCartForm) {
+                addToCartBtn.addEventListener('click', function() {
+                    const availabilityId = document.getElementById('availability_id').value;
+                    if (!availabilityId) {
+                        alert('Please select an appointment slot first.');
+                        return;
+                    }
+                    addToCartForm.action = cartUrlTemplate.replace('/0/', `/${availabilityId}/`);
+                    addToCartForm.submit();
+                });
+            }
             </script>
 
             {% elif step == '2' %}
@@ -689,9 +724,7 @@
                         {% if doctor.profile_picture %}
                             <img src="{{ doctor.profile_picture.url }}" class="doctor-avatar" alt="Dr. {{ doctor.user.get_full_name }}">
                         {% else %}
-                            <div style="width: 80px; height: 80px; border-radius: 50%; background-color: var(--primary-blue-light); display: flex; align-items: center; justify-content: center;">
-                                <i class="bi bi-person" style="font-size: 2rem; color: var(--primary-blue);"></i>
-                            </div>
+                            <img src="{{ STATIC_URL }}img/demo-doctor.svg" class="doctor-avatar" alt="Dr. {{ doctor.user.get_full_name }}">
                         {% endif %}
                         <div class="doctor-details">
                             <h5 class="mb-1">Dr. {{ doctor.user.get_full_name }}</h5>
@@ -771,7 +804,7 @@
                                 <i class="bi bi-chat-dots"></i>
                                 <span>WhatsApp</span>
                             </a>
-                            <a href="mailto:support@drseba.com" class="contact-btn email">
+                            <a href="mailto:support@drappointmentbookingsolution.com" class="contact-btn email">
                                 <i class="bi bi-envelope"></i>
                                 <span>Email Support</span>
                             </a>

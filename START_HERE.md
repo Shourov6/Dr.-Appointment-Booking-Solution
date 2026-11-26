@@ -140,7 +140,7 @@ Edit `.env` file - uncomment MySQL lines:
 DB_ENGINE=django.db.backends.mysql
 DB_NAME=drseba_healthcare
 DB_USER=drseba_user
-DB_PASSWORD=DrsebaPwd123!@#
+DB_PASSWORD=your-database-password
 DB_HOST=localhost
 DB_PORT=3306
 ```

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout - Dr. Appointment Booking Solution{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h3 class="fw-bold mb-4">Confirm Multiple Appointments</h3>
+
+    {% if cart_items %}
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="fw-bold mb-0">Appointments In This Checkout</h5>
+                </div>
+                <div class="card-body">
+                    {% for item in cart_items %}
+                    <div class="d-flex justify-content-between align-items-start py-3 {% if not forloop.last %}border-bottom{% endif %}">
+                        <div>
+                            <h6 class="fw-bold mb-1">Dr. {{ item.doctor.user.get_full_name|default:item.doctor.user.username }}</h6>
+                            <div class="text-muted small mb-1">
+                                <i class="bi bi-building me-1"></i>{{ item.hospital.name }}
+                            </div>
+                            <div class="text-muted small">
+                                <i class="bi bi-calendar-event me-1"></i>{{ item.availability.date|date:"D, M d, Y" }}
+                                <i class="bi bi-clock ms-2 me-1"></i>{{ item.availability.time_slot }}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-primary">৳{{ item.get_total|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <form method="post" class="mt-3">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-credit-card me-2"></i>Proceed to Payment
+                </button>
+                <a href="{% url 'appointments:cart' %}" class="btn btn-outline-secondary btn-lg ms-2">
+                    Back To Cart
+                </a>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm sticky-top" style="top: 90px;">
+                <div class="card-header bg-white">
+                    <h5 class="fw-bold mb-0">Checkout Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Items</span>
+                        <span>{{ cart_items|length }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Subtotal</span>
+                        <span>৳{{ total|floatformat:2 }}</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>Total</span>
+                        <span class="text-primary">৳{{ total|floatformat:2 }}</span>
+                    </div>
+                    <div class="small text-muted mt-3">
+                        These appointments will be created together in one action.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-cart-x fs-1 text-muted"></i>
+        <h5 class="mt-3">Nothing to checkout</h5>
+        <a href="{% url 'appointments:cart' %}" class="btn btn-primary">Go to Cart</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

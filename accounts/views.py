@@ -2,6 +2,7 @@
 Views for accounts app
 """
 from django.shortcuts import render, redirect
+from django.conf import settings
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -16,6 +17,24 @@ from .forms import (
     normalize_bd_phone,
 )
 from .models import User, PatientProfile
+
+DEMO_LOGIN_EMAILS = {
+    'patient@gmail.com',
+    'dr.karim@gmail.com',
+    'dr.fatima@gmail.com',
+    'dr.hasan@gmail.com',
+    'dr.ayesha@gmail.com',
+    'dr.sohel@gmail.com',
+    'dr.nasrin@gmail.com',
+    'dr.rafiq@gmail.com',
+    'dr.nasima@gmail.com',
+    'rahima@gmail.com',
+    'kamrul@gmail.com',
+    'shahinur@gmail.com',
+    'fatima.employee@gmail.com',
+    'tanvir@gmail.com',
+    'admin.demo@gmail.com',
+}
 
 
 def login_view(request):
@@ -41,6 +60,8 @@ def login_view(request):
 
             if not user:
                 messages.error(request, 'No account found for that mobile number or Gmail address.')
+            elif not settings.DEBUG and user.email.lower() in DEMO_LOGIN_EMAILS:
+                messages.error(request, 'Demo accounts are disabled when DEBUG is off.')
             elif user.is_super_admin():
                 if user.check_password(password):
                     login(request, user)
@@ -80,7 +101,31 @@ def login_view(request):
     else:
         form = LoginForm()
     
-    return render(request, 'accounts/login.html', {'form': form})
+    context = {'form': form}
+    if settings.SHOW_DEMO_CREDENTIALS:
+        context['demo_accounts'] = [
+            {
+                'role': 'Patient',
+                'identifier': 'patient@gmail.com',
+                'password': settings.DEMO_LOGIN_PASSWORD,
+            },
+            {
+                'role': 'Doctor',
+                'identifier': 'dr.karim@gmail.com',
+                'password': settings.DEMO_LOGIN_PASSWORD,
+            },
+            {
+                'role': 'Employee',
+                'identifier': 'rahima@gmail.com',
+                'password': settings.DEMO_LOGIN_PASSWORD,
+            },
+            {
+                'role': 'Admin',
+                'identifier': 'admin.demo@gmail.com',
+                'password': settings.DEMO_LOGIN_PASSWORD,
+            },
+        ]
+    return render(request, 'accounts/login.html', context)
 
 
 def patient_register(request):

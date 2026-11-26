@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}My Profile - DrSeba.com{% endblock %}
+{% block title %}My Profile - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container py-5">
@@ -12,9 +12,7 @@
                     {% if profile.profile_picture %}
                         <img src="{{ profile.profile_picture.url }}" class="rounded-circle mb-3" width="100" height="100" alt="Profile">
                     {% else %}
-                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px;">
-                            <i class="bi bi-person fs-1 text-primary"></i>
-                        </div>
+                        <img src="{{ STATIC_URL }}img/default-user.png" class="rounded-circle mb-3" width="100" height="100" alt="Demo profile avatar">
                     {% endif %}
                     <h5 class="fw-bold mb-1">{{ user.get_full_name }}</h5>
                     <p class="text-muted mb-0">{{ user.get_role_display }}</p>

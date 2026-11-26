@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Doctors & Hospitals - DrSeba.com{% endblock %}
+{% block title %}Doctors & Hospitals - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container-fluid" style="background-color: #f8f9fa; min-height: 100vh;">
@@ -13,7 +13,7 @@
                     <div class="d-flex align-items-center">
                         <div class="bg-primary rounded d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px; font-weight: bold; color: white;">DS</div>
                         <div>
-                            <h6 class="mb-0 fw-bold">DrSeba.com</h6>
+                            <h6 class="mb-0 fw-bold">Dr. Appointment Booking Solution</h6>
                             <small class="text-muted">Admin Panel</small>
                         </div>
                     </div>
@@ -71,8 +71,13 @@
                     <div>
                         <h4 class="fw-bold mb-0">Doctors & Hospitals</h4>
                     </div>
-                    <a class="btn btn-primary fw-bold" id="addBtn" href="{% url 'dashboard:admin_doctor_create' %}">
-                        <i class="bi bi-plus-lg me-2"></i>Add Doctor
+                    <a
+                        class="btn btn-primary fw-bold"
+                        id="addBtn"
+                        href="{% if active_tab == 'hospitals' %}#{% else %}{% url 'dashboard:admin_doctor_create' %}{% endif %}"
+                        {% if active_tab == 'hospitals' %}data-bs-toggle="modal" data-bs-target="#addHospitalModal"{% endif %}
+                    >
+                        <i class="bi bi-plus-lg me-2"></i>{% if active_tab == 'hospitals' %}Add Hospital{% else %}Add Doctor{% endif %}
                     </a>
                 </div>
                 
@@ -80,12 +85,12 @@
                 <div class="mb-4">
                     <ul class="nav nav-tabs" id="doctorHospitalTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active fw-bold" id="doctors-tab" data-bs-toggle="tab" data-bs-target="#doctors-tab-content" type="button" role="tab">
+                            <button class="nav-link {% if active_tab != 'hospitals' %}active{% endif %} fw-bold" id="doctors-tab" data-bs-toggle="tab" data-bs-target="#doctors-tab-content" type="button" role="tab">
                                 <i class="bi bi-heart-pulse me-2"></i>Doctors
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link fw-bold" id="hospitals-tab" data-bs-toggle="tab" data-bs-target="#hospitals-tab-content" type="button" role="tab">
+                            <button class="nav-link {% if active_tab == 'hospitals' %}active{% endif %} fw-bold" id="hospitals-tab" data-bs-toggle="tab" data-bs-target="#hospitals-tab-content" type="button" role="tab">
                                 <i class="bi bi-hospital me-2"></i>Hospitals
                             </button>
                         </li>
@@ -100,7 +105,7 @@
                 <!-- Tab Content -->
                 <div class="tab-content" id="doctorHospitalTabContent">
                     <!-- Doctors Tab -->
-                    <div class="tab-pane fade show active" id="doctors-tab-content" role="tabpanel">
+                    <div class="tab-pane fade {% if active_tab == 'hospitals' %}{% else %}show active{% endif %}" id="doctors-tab-content" role="tabpanel">
                         <!-- Search Bar -->
                         <div class="mb-4">
                             <div class="input-group position-relative" style="max-width: 400px;">
@@ -249,7 +254,7 @@
                     </div>
                     
                     <!-- Hospitals Tab -->
-                    <div class="tab-pane fade" id="hospitals-tab-content" role="tabpanel">
+                    <div class="tab-pane fade {% if active_tab == 'hospitals' %}show active{% endif %}" id="hospitals-tab-content" role="tabpanel">
                         <!-- Search Bar -->
                         <div class="mb-4">
                             <div class="input-group position-relative" style="max-width: 400px;">
@@ -269,14 +274,25 @@
                                 <div class="card border-0 shadow-sm h-100">
                                     <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-start">
                                         <div>
-                                            <h5 class="card-title fw-bold mb-1">{{ hospital.name }}</h5>
+                                            <h5 class="card-title fw-bold mb-1 d-flex align-items-center gap-2">
+                                                <span>{{ hospital.name }}</span>
+                                                {% if hospital.is_active %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle" title="Active">
+                                                    <i class="bi bi-check-circle-fill me-1"></i>Active
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="Inactive">
+                                                    <i class="bi bi-x-circle-fill me-1"></i>Inactive
+                                                </span>
+                                                {% endif %}
+                                            </h5>
                                             <small class="text-muted">HOS-{{ hospital.id }}</small>
                                         </div>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-sm btn-link text-primary p-0 me-2" title="Edit" data-bs-toggle="modal" data-bs-target="#editHospitalModal" onclick="loadHospitalData({{ hospital.id }}, '{{ hospital.name }}', '{{ hospital.city }}', '{{ hospital.phone }}', '{{ hospital.email }}', {{ hospital.total_beds }}, {{ hospital.icu_beds_available }}, {{ hospital.doctors.count }})">
+                                            <button type="button" class="btn btn-sm btn-link text-primary p-0 me-2" title="Edit" data-bs-toggle="modal" data-bs-target="#editHospitalModal" onclick="loadHospitalData({{ hospital.id }}, '{{ hospital.name|escapejs }}', '{{ hospital.city|default_if_none:''|escapejs }}', '{{ hospital.phone|default_if_none:''|escapejs }}', '{{ hospital.email|default_if_none:''|escapejs }}', {{ hospital.total_beds|default:0 }}, {{ hospital.icu_beds_available|default:0 }}, {{ hospital.doctors.count }}, '{{ hospital.is_active|yesno:'active,inactive' }}')">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
-                                            <form method="post" action="{% url 'dashboard:delete_hospital' hospital.id %}" style="display: inline;" onsubmit="if(!confirm('Are you sure you want to delete this hospital?')) return false;">
+                                            <form method="post" action="{% url 'dashboard:delete_hospital' hospital.id %}?tab=hospitals" style="display: inline;" onsubmit="if(!confirm('Are you sure you want to delete this hospital?')) return false;">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Delete">
                                                     <i class="bi bi-trash"></i>
@@ -880,7 +896,7 @@
                 <h5 class="modal-title fw-bold" id="addHospitalLabel">Add New Hospital</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" id="addHospitalForm" action="/dashboard/admin/hospitals/create/">
+            <form method="post" id="addHospitalForm" action="{% url 'dashboard:create_hospital' %}?tab=hospitals">
                 {% csrf_token %}
                 <div class="modal-body">
                     <!-- Hospital Name -->
@@ -974,7 +990,7 @@
         addBtn.innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Hospital';
     });
 
-    function loadHospitalData(id, name, location, phone, email, totalBeds, icuBeds, numDoctors) {
+    function loadHospitalData(id, name, location, phone, email, totalBeds, icuBeds, numDoctors, status) {
         // Populate form fields with hospital data
         document.getElementById('hospitalId').value = 'HOS-' + String(id).padStart(3, '0');
         document.getElementById('hospitalName').value = name;
@@ -984,9 +1000,10 @@
         document.getElementById('totalBeds').value = totalBeds;
         document.getElementById('icuBeds').value = icuBeds;
         document.getElementById('numDoctors').value = numDoctors;
+        document.getElementById('status').value = status === 'inactive' ? 'inactive' : 'active';
         
         // Set the form action to update endpoint
-        document.getElementById('editHospitalForm').action = '/dashboard/admin/hospitals/update/' + id + '/';
+        document.getElementById('editHospitalForm').action = '/dashboard/admin/hospitals/update/' + id + '/?tab=hospitals';
     }
 </script>
 

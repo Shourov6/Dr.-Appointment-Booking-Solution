@@ -8,6 +8,7 @@ app_name = 'payments'
 
 urlpatterns = [
     path('process/<int:appointment_id>/', views.process_payment, name='process'),
+    path('batch-checkout/', views.batch_checkout, name='batch_checkout'),
     path('success/<int:payment_id>/', views.payment_success, name='success'),
     path('failed/<int:payment_id>/', views.payment_failed, name='failed'),
     path('history/', views.payment_history, name='history'),

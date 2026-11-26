@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ doctor.get_full_name }} - Reviews & Ratings - DrSeba.com{% endblock %}
+{% block title %}{{ doctor.get_full_name }} - Reviews & Ratings - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <!-- Reviews Page -->
@@ -27,9 +27,7 @@
                             {% if doctor.profile_picture %}
                             <img src="{{ doctor.profile_picture.url }}" alt="{{ doctor.get_full_name }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
                             {% else %}
-                            <div class="bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border-radius: 8px;">
-                                <i class="bi bi-person fs-2 text-primary"></i>
-                            </div>
+                            <img src="{{ STATIC_URL }}img/demo-doctor.svg" alt="{{ doctor.get_full_name }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
                             {% endif %}
                         </div>
 
@@ -129,7 +127,7 @@
                                     {% if review.patient.patient_profile.profile_picture %}
                                     <img src="{{ review.patient.patient_profile.profile_picture.url }}" alt="{{ review.patient.get_full_name }}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" class="me-2">
                                     {% else %}
-                                    <i class="bi bi-person-circle me-2"></i>
+                                    <img src="{{ STATIC_URL }}img/default-user.png" alt="Patient avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" class="me-2">
                                     {% endif %}
                                     {{ review.patient.get_full_name|default:review.patient.username }}
                                 </h6>

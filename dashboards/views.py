@@ -104,6 +104,7 @@ def patient_dashboard(request):
     
     # Cart items
     cart_items = CartItem.objects.filter(patient=request.user)
+    cart_total = sum(item.get_total() if hasattr(item, 'get_total') else item.consultation_fee for item in cart_items)
     
     # Favorite doctors
     favorite_doctors = profile.favorite_doctors.all()[:4] if profile else Doctor.objects.none()
@@ -117,7 +118,9 @@ def patient_dashboard(request):
     context = {
         'upcoming_appointments': upcoming_appointments,
         'past_appointments': past_appointments,
+        'cart_items': cart_items,
         'cart_count': cart_items.count(),
+        'cart_total': cart_total,
         'favorite_doctors': favorite_doctors,
         'recent_payments': recent_payments,
         'profile': profile,
@@ -275,6 +278,25 @@ def doctor_schedule(request):
 
 def _sync_future_availability_for_schedule(schedule):
     """Keep future availability aligned with current weekly schedule status/time window."""
+    def _coerce_time_value(value):
+        if value is None:
+            return None
+        if hasattr(value, 'hour') and hasattr(value, 'minute'):
+            return value
+        if isinstance(value, str):
+            raw = value.strip()
+            for fmt in ('%H:%M', '%H:%M:%S'):
+                try:
+                    return datetime.strptime(raw, fmt).time()
+                except ValueError:
+                    continue
+        return None
+
+    schedule_start = _coerce_time_value(schedule.start_time)
+    schedule_end = _coerce_time_value(schedule.end_time)
+    if not schedule_start or not schedule_end or schedule_start >= schedule_end:
+        return
+
     start_date = date.today()
     end_date = start_date + timedelta(days=30)
 
@@ -291,7 +313,7 @@ def _sync_future_availability_for_schedule(schedule):
 
     overlapping_slots = []
     for slot_value, slot_start, slot_end in slot_windows:
-        if slot_end <= schedule.start_time or slot_start >= schedule.end_time:
+        if slot_end <= schedule_start or slot_start >= schedule_end:
             continue
         overlapping_slots.append(slot_value)
 
@@ -511,7 +533,14 @@ def doctor_add_schedule(request):
         messages.error(request, 'Day must be between Monday and Sunday.')
         return redirect('dashboard:doctor_schedule')
 
-    if start_time >= end_time:
+    try:
+        parsed_start_time = datetime.strptime(start_time.strip(), '%H:%M').time()
+        parsed_end_time = datetime.strptime(end_time.strip(), '%H:%M').time()
+    except (AttributeError, ValueError):
+        messages.error(request, 'Invalid time format. Please use HH:MM.')
+        return redirect('dashboard:doctor_schedule')
+
+    if parsed_start_time >= parsed_end_time:
         messages.error(request, 'End time must be after start time.')
         return redirect('dashboard:doctor_schedule')
 
@@ -520,8 +549,8 @@ def doctor_add_schedule(request):
         hospital=hospital_link.hospital,
         day_of_week=day_of_week,
         defaults={
-            'start_time': start_time,
-            'end_time': end_time,
+            'start_time': parsed_start_time,
+            'end_time': parsed_end_time,
             'is_active': True,
         },
     )
@@ -727,13 +756,19 @@ def admin_dashboard(request):
             }
         )
 
-    recent_payments = Payment.objects.order_by('-created_at')[:2]
+    recent_payments = Payment.objects.select_related('appointment', 'appointment__invoice').order_by('-created_at')[:2]
     for payment in recent_payments:
+        invoice = getattr(payment.appointment, 'invoice', None) if payment.appointment else None
+        invoice_ref = (
+            invoice.invoice_number
+            if invoice and invoice.invoice_number
+            else (payment.transaction_id or f"PAY-{payment.id}")
+        )
         generated_notifications.append(
             {
                 'source_key': f'payment_{payment.id}',
                 'title': 'Payment update',
-                'message': f"Invoice {payment.invoice_number} is {payment.status.replace('_', ' ').title()}.",
+                'message': f"Invoice {invoice_ref} is {payment.status.replace('_', ' ').title()}.",
                 'notif_type': 'success' if payment.status == 'completed' else 'warning',
                 'target_url': reverse('dashboard:admin_payments'),
             }
@@ -849,7 +884,7 @@ def admin_employees(request):
         messages.error(request, 'Access denied.')
         return redirect('home')
     
-    employees = User.objects.filter(role='employee').order_by('-date_joined')
+    employees = User.objects.filter(role='employee').select_related('employee_profile').order_by('-date_joined')
     
     # Handle search filter
     search_query = request.GET.get('search', '').strip()
@@ -861,6 +896,11 @@ def admin_employees(request):
             Q(phone__icontains=search_query)
         )
     
+    employees = list(employees)
+    for employee in employees:
+        profile = getattr(employee, 'employee_profile', None)
+        employee.admin_password_display = profile.admin_visible_password if profile else ''
+
     context = {
         'employees': employees,
         'search_query': search_query,
@@ -1467,13 +1507,13 @@ def delete_hospital(request, hospital_id):
 
     if request.method != 'POST':
         messages.error(request, 'Invalid request method.')
-        return redirect('dashboard:admin_doctors')
+        return redirect(f"{reverse('dashboard:admin_doctors')}?tab=hospitals")
 
     hospital = get_object_or_404(Hospital, id=hospital_id)
     hospital_name = hospital.name
     hospital.delete()
     messages.success(request, f'Hospital {hospital_name} has been deleted.')
-    return redirect('dashboard:admin_doctors')
+    return redirect(f"{reverse('dashboard:admin_doctors')}?tab=hospitals")
 
 
 @login_required
@@ -1496,9 +1536,9 @@ def update_hospital(request, hospital_id):
         hospital.save()
         
         messages.success(request, f'Hospital {hospital.name} has been updated successfully.')
-        return redirect('dashboard:admin_doctors')
+        return redirect(f"{reverse('dashboard:admin_doctors')}?tab=hospitals")
     
-    return redirect('dashboard:admin_doctors')
+    return redirect(f"{reverse('dashboard:admin_doctors')}?tab=hospitals")
 
 
 @login_required
@@ -2158,13 +2198,13 @@ def create_hospital(request):
             )
             
             messages.success(request, f'Hospital {hospital.name} created successfully.')
-            return redirect('dashboard:admin_doctors')
+            return redirect(f"{reverse('dashboard:admin_doctors')}?tab=hospitals")
             
         except Exception as e:
             messages.error(request, f'Error creating hospital: {str(e)}')
-            return redirect('dashboard:admin_doctors')
+            return redirect(f"{reverse('dashboard:admin_doctors')}?tab=hospitals")
     
-    return redirect('dashboard:admin_doctors')
+    return redirect(f"{reverse('dashboard:admin_doctors')}?tab=hospitals")
 
 
 @login_required
@@ -2228,6 +2268,7 @@ def create_employee(request):
                 department=department,
                 designation=designation,
                 joining_date=joining_date,
+                admin_visible_password=use_password,
                 is_active=is_active
             )
             
@@ -2256,7 +2297,20 @@ def update_employee(request, employee_id):
             user.first_name = request.POST.get('first_name', user.first_name)
             user.last_name = request.POST.get('last_name', user.last_name)
             user.phone = request.POST.get('phone', user.phone)
+
+            new_password = request.POST.get('password', '').strip()
+            confirm_password = request.POST.get('confirm_password', '').strip()
+            if new_password or confirm_password:
+                if len(new_password) < 4:
+                    return JsonResponse({'success': False, 'message': 'Password must be at least 4 characters long.'})
+                if new_password != confirm_password:
+                    return JsonResponse({'success': False, 'message': 'Passwords do not match.'})
+                user.set_password(new_password)
+
             user.save()
+
+            if new_password:
+                EmployeeProfile.objects.filter(user=user).update(admin_visible_password=new_password)
             
             return JsonResponse({'success': True, 'message': 'Employee updated successfully'})
         except Exception as e:
@@ -2639,7 +2693,6 @@ def admin_payments(request):
             Q(invoice__invoice_number__icontains=search_query)
         ).distinct()
 
-    payment_rows = []
     method_icon_map = {
         'bkash': 'bi-wallet2',
         'nagad': 'bi-phone',
@@ -2647,7 +2700,7 @@ def admin_payments(request):
         'cash': 'bi-cash-coin',
     }
 
-    for appt in appointments:
+    def build_payment_row(appt):
         payment = getattr(appt, 'payment', None)
         invoice = getattr(appt, 'invoice', None)
 
@@ -2657,9 +2710,44 @@ def admin_payments(request):
             else (appt.patient.username if appt.patient else (appt.guest_full_name or 'Guest Patient'))
         )
         doctor_name = f"Dr. {appt.doctor.user.get_full_name() or appt.doctor.user.username}"
-        amount = payment.amount if payment else appt.consultation_fee
-        service_charge = appt.service_fee
-        total_amount = appt.total_amount
+
+        # Use a single fee source chain so table and recent transactions stay consistent.
+        consultation_fee = None
+        service_charge = None
+        total_amount = None
+        transaction_timestamp = appt.created_at
+
+        if invoice:
+            consultation_fee = invoice.consultation_fee
+            service_charge = invoice.service_fee
+            total_amount = invoice.total_amount
+            transaction_timestamp = invoice.paid_at or invoice.created_at or transaction_timestamp
+        else:
+            consultation_fee = appt.consultation_fee
+            service_charge = appt.service_fee
+            total_amount = appt.total_amount
+
+        if payment:
+            transaction_timestamp = (
+                payment.completed_at
+                or payment.updated_at
+                or payment.created_at
+                or transaction_timestamp
+            )
+
+        # Fallback to current doctor-hospital fee when historical consultation fee is missing.
+        if not consultation_fee or consultation_fee <= 0:
+            consultation_fee = appt.doctor.get_consultation_fee('in_person', hospital=appt.hospital)
+
+        consultation_fee = consultation_fee or Decimal('0.00')
+        service_charge = service_charge or Decimal('0.00')
+
+        if not total_amount or total_amount <= 0:
+            total_amount = consultation_fee + service_charge
+
+        # If a payment exists, trust the captured payment amount as transaction total.
+        if payment and payment.amount and payment.amount > 0:
+            total_amount = payment.amount
 
         method_key = (payment.method if payment else (appt.payment_method or '')).lower()
         method_display = (
@@ -2671,18 +2759,22 @@ def admin_payments(request):
         payment_status = payment.status if payment else ('completed' if appt.is_paid else 'pending')
         invoice_id = invoice.invoice_number if invoice else f"APPT-{appt.id:04d}"
 
-        payment_rows.append({
+        return {
             'invoice_id': invoice_id,
             'patient_name': patient_name,
             'doctor_name': doctor_name,
-            'amount': amount,
+            'amount': consultation_fee,
             'service_charge': service_charge,
             'total_amount': total_amount,
-            'date': appt.created_at.date(),
+            'date': transaction_timestamp.date(),
+            'transaction_timestamp': transaction_timestamp,
             'method_display': method_display,
             'method_icon': method_icon_map.get(method_key, 'bi-receipt'),
             'payment_status': payment_status,
-        })
+        }
+
+    payment_rows = [build_payment_row(appt) for appt in appointments]
+    payment_rows.sort(key=lambda row: row['transaction_timestamp'], reverse=True)
 
     total_revenue = sum(
         row['total_amount']

@@ -724,6 +724,8 @@ def add_to_cart(request, availability_id):
     if not request.user.is_patient():
         messages.error(request, 'Only patients can add to cart.')
         return redirect('home')
+
+    next_url = request.POST.get('next') or request.GET.get('next')
     
     availability = get_object_or_404(
         DoctorAvailability, 
@@ -748,6 +750,8 @@ def add_to_cart(request, availability_id):
     # Check if already in cart
     if CartItem.objects.filter(patient=request.user, availability=availability).exists():
         messages.warning(request, 'This slot is already in your cart.')
+        if next_url:
+            return redirect(next_url)
         return redirect('doctors:detail', pk=availability.doctor.id)
     
     # Create cart item
@@ -763,6 +767,8 @@ def add_to_cart(request, availability_id):
     )
     
     messages.success(request, 'Added to cart successfully!')
+    if next_url:
+        return redirect(next_url)
     return redirect('appointments:cart')
 
 
@@ -770,11 +776,16 @@ def add_to_cart(request, availability_id):
 def remove_from_cart(request, item_id):
     """Remove item from cart"""
     if not request.user.is_patient():
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Only patients can manage cart.'})
         messages.error(request, 'Only patients can manage cart.')
         return redirect('home')
     
     cart_item = get_object_or_404(CartItem, id=item_id, patient=request.user)
     cart_item.delete()
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
     
     messages.success(request, 'Item removed from cart.')
     return redirect('appointments:cart')
@@ -794,8 +805,9 @@ def clear_cart(request):
 
 @login_required
 @login_required
+@login_required
 def checkout(request):
-    """Checkout cart items"""
+    """Checkout cart items and create appointments for payment"""
     if not request.user.is_patient():
         messages.error(request, 'Only patients can checkout.')
         return redirect('home')
@@ -821,7 +833,8 @@ def checkout(request):
                     consultation_type='in_person',
                     symptoms=item.symptoms,
                     consultation_fee=item.consultation_fee,
-                    service_fee=item.service_fee
+                    service_fee=item.service_fee,
+                    total_amount=item.consultation_fee + Decimal(item.service_fee or 50)
                 )
                 
                 # Mark availability as booked
@@ -833,11 +846,11 @@ def checkout(request):
             # Clear cart
             cart_items.delete()
         
-        if len(appointments) == 1:
-            return redirect('payments:process', appointment_id=appointments[0].id)
-        else:
-            messages.success(request, f'{len(appointments)} appointments booked!')
-            return redirect('appointments:my_appointments')
+        # Store appointment IDs in session for batch payment
+        request.session['checkout_appointment_ids'] = [appt.id for appt in appointments]
+        
+        # Redirect to batch payment page
+        return redirect('payments:batch_checkout')
     
     total = sum(item.get_total() for item in cart_items)
     

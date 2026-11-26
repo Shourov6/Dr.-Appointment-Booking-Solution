@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 
-{% block title %}Login - DrSeba.com{% endblock %}
+{% block title %}Login - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-5">
+        <div class="col-md-8 col-lg-7">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-5">
                     <div class="text-center mb-4">
                         <h3 class="fw-bold">Welcome Back</h3>
-                        <p class="text-muted">Sign in to your DrSeba account</p>
+                        <p class="text-muted">Sign in to your Dr. Appointment Booking Solution account</p>
                     </div>
                     
                     <form method="POST">
@@ -51,6 +51,32 @@
                             <a href="{% url 'accounts:patient_register' %}" class="btn btn-outline-primary btn-sm me-2">Register as Patient</a>
                         </div>
                     </div>
+
+                    {% if demo_accounts %}
+                    <div class="mt-4 pt-4 border-top">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h5 class="fw-bold mb-0">Demo login accounts</h5>
+                            <span class="badge text-bg-light">Testing only</span>
+                        </div>
+                        <p class="small text-muted">Select a role to fill the login form. These public demo accounts are for testing only.</p>
+                        <div class="row g-2">
+                            {% for account in demo_accounts %}
+                            <div class="col-sm-6">
+                                <button
+                                    class="btn btn-light border w-100 text-start p-3 demo-account"
+                                    type="button"
+                                    data-identifier="{{ account.identifier }}"
+                                    data-password="{{ account.password }}">
+                                    <span class="d-block fw-semibold">{{ account.role }}</span>
+                                    <span class="d-block small text-muted">{{ account.identifier }}</span>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">Password for all demo accounts: <code>{{ demo_accounts.0.password }}</code></p>
+                        <p class="small text-danger mt-2 mb-0">Demo access is enabled only while DEBUG is on. Disable DEBUG before production deployment.</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -71,6 +97,13 @@ document.getElementById('togglePassword').addEventListener('click', function() {
         toggleIcon.classList.remove('bi-eye-slash');
         toggleIcon.classList.add('bi-eye');
     }
+});
+
+document.querySelectorAll('.demo-account').forEach(function(button) {
+    button.addEventListener('click', function() {
+        document.querySelector('[name="identifier"]').value = button.dataset.identifier;
+        document.querySelector('[name="password"]').value = button.dataset.password;
+    });
 });
 </script>
 {% endblock %}

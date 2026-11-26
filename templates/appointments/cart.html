@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Shopping Cart - DrSeba.com{% endblock %}
+{% block title %}Shopping Cart - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container py-5">
@@ -16,9 +16,7 @@
                         {% if item.doctor.profile_picture %}
                         <img src="{{ item.doctor.profile_picture.url }}" class="rounded-circle me-3" width="60" height="60" alt="">
                         {% else %}
-                        <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
-                            <i class="bi bi-person text-primary fs-3"></i>
-                        </div>
+                        <img src="{{ STATIC_URL }}img/demo-doctor.svg" class="rounded-circle me-3" width="60" height="60" alt="{{ item.doctor.get_full_name }}">
                         {% endif %}
                         
                         <div class="flex-grow-1">

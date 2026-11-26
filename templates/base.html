@@ -4,7 +4,7 @@
     {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}DrSeba.com - Find Your Trusted Doctor{% endblock %}</title>
+    <title>{% block title %}Dr. Appointment Booking Solution - Find Your Trusted Doctor{% endblock %}</title>
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -59,6 +59,47 @@
         .navbar-brand {
             font-family: 'Poppins', sans-serif;
             font-weight: 600;
+            line-height: 1;
+        }
+
+        .navbar .navbar-nav {
+            align-items: center;
+        }
+
+        .navbar .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            line-height: 1.2;
+        }
+
+        .navbar .navbar-nav.mx-auto .nav-link {
+            text-align: center;
+            padding-left: 0.9rem;
+            padding-right: 0.9rem;
+        }
+
+        @media (max-width: 991.98px) {
+            .navbar .navbar-collapse {
+                text-align: center;
+            }
+
+            .navbar .navbar-nav.mx-auto {
+                margin-top: 0.75rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .navbar .navbar-nav.mx-auto .nav-item {
+                width: 100%;
+            }
+
+            .navbar .navbar-nav.mx-auto .nav-link {
+                justify-content: center;
+            }
+
+            .navbar .navbar-nav.align-items-center {
+                align-items: center !important;
+            }
         }
         
         .hero-section {
@@ -265,8 +306,8 @@
     <nav class="navbar navbar-expand-lg bg-white sticky-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{% url 'home' %}">
-                <span class="badge bg-primary me-2">DS</span>
-                <span style="color: var(--primary-blue); font-weight: 700; font-size: 1.25rem;">DrSeba.com</span>
+                <span class="badge bg-primary me-2">DABS</span>
+                <span style="color: var(--primary-blue); font-weight: 700; font-size: 1.25rem;">Dr. Appointment Booking Solution</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -290,6 +331,20 @@
                 </ul>
                 
                 <ul class="navbar-nav align-items-center">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item me-2">
+                        <a class="nav-link position-relative d-flex align-items-center gap-1 px-2 py-1 rounded-pill border border-primary text-primary" href="{% url 'appointments:cart' %}" title="Manage Cart">
+                            <i class="bi bi-cart3"></i>
+                            <span class="small fw-semibold">Cart</span>
+                            {% if cart_items_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ cart_items_count }}
+                            </span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endif %}
+
                     <!-- Language Switcher -->
                     <li class="nav-item dropdown me-2">
                         <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -314,7 +369,7 @@
                                 {% if user.patient_profile.profile_picture %}
                                     <img src="{{ user.patient_profile.profile_picture.url }}" class="rounded-circle me-2" width="30" height="30" alt="Profile">
                                 {% else %}
-                                    <i class="bi bi-person-circle me-2 fs-5"></i>
+                                    <img src="{{ STATIC_URL }}img/default-user.png" class="rounded-circle me-2" width="30" height="30" alt="Profile">
                                 {% endif %}
                                 {{ user.get_full_name|default:user.username }}
                             </a>
@@ -374,8 +429,8 @@
             <div class="row justify-content-center mb-4">
                 <div class="col-12 text-center">
                     <h6 class="footer-title mb-2" style="font-size: 1.5rem;">
-                        <span class="badge bg-primary">DS</span>
-                        DrSeba.com
+                        <span class="badge bg-primary">DABS</span>
+                        Dr. Appointment Booking Solution
                     </h6>
                     <p class="text-muted mb-2" style="font-size: 1rem;">Your trusted healthcare platform for finding and booking appointments with verified doctors and hospitals.</p>
                 </div>
@@ -419,7 +474,7 @@
                             <small style="color: var(--muted-gray);"><i class="bi bi-telephone me-2"></i>+880 1700-000000</small>
                         </div>
                         <div class="mb-2">
-                            <small style="color: var(--muted-gray);"><i class="bi bi-envelope me-2"></i>info@drseba.com</small>
+                            <small style="color: var(--muted-gray);"><i class="bi bi-envelope me-2"></i>info@drappointmentbookingsolution.com</small>
                         </div>
                         <div>
                             <small style="color: var(--muted-gray);"><i class="bi bi-clock me-2"></i>Available 24/7</small>
@@ -432,7 +487,7 @@
             </div>
             <div class="row justify-content-center">
                 <div class="col-12 text-center">
-                    <p class="mb-0">&copy; {% now "Y" %} DrSeba.com. All rights reserved.</p>
+                    <p class="mb-0">&copy; {% now "Y" %} Dr. Appointment Booking Solution. All rights reserved.</p>
                 </div>
             </div>
         </div>

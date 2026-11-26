@@ -27,3 +27,19 @@ def language_context(request):
         'translations': translations,
         'is_bangla': lang == 'bn',
     }
+
+
+def cart_context(request):
+    """Expose cart item count globally for patient navigation widgets."""
+    cart_items_count = 0
+
+    if request.user.is_authenticated:
+        try:
+            from appointments.models import CartItem
+            cart_items_count = CartItem.objects.filter(patient=request.user).count()
+        except Exception:
+            cart_items_count = 0
+
+    return {
+        'cart_items_count': cart_items_count,
+    }

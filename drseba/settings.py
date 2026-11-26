@@ -4,6 +4,7 @@ Django settings for DrSeba.com project.
 
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -12,13 +13,18 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-drseba-healthcare-platform-2024-secure-key')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('Set SECRET_KEY in the environment when DEBUG is disabled.')
+    SECRET_KEY = 'django-insecure-local-development-only'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+SHOW_DEMO_CREDENTIALS = DEBUG and os.getenv('SHOW_DEMO_CREDENTIALS', 'True').lower() == 'true'
+DEMO_LOGIN_PASSWORD = os.getenv('DEMO_LOGIN_PASSWORD', 'DemoLogin123!')
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -35,6 +41,7 @@ INSTALLED_APPS = [
     'appointments',
     'payments',
     'dashboards',
+    'ai_recommender',
 ]
 
 MIDDLEWARE = [
@@ -61,7 +68,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.static',
                 'accounts.context_processors.language_context',
+                'accounts.context_processors.cart_context',
             ],
         },
     },
@@ -69,23 +78,69 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'drseba.wsgi.application'
 
-# Database - Flexible MySQL/SQLite Configuration
-# Uses environment variables for database selection
-# Default: SQLite (for local development)
-# Product Configuration - Using MySQL
-# Force MySQL by setting environment variable
-os.environ.setdefault('DB_ENGINE', 'django.db.backends.mysql')
+# Database configuration
+# Supported engines:
+# - django.db.backends.postgresql (Supabase/PostgreSQL)
+# - django.db.backends.mysql
+# - django.db.backends.sqlite3
+DB_ENGINE_CHOICE = os.getenv(
+    'DB_ENGINE',
+    'django.db.backends.sqlite3',
+)
+DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('SUPABASE_DATABASE_URL')
 
-DB_ENGINE_CHOICE = os.getenv('DB_ENGINE', 'django.db.backends.mysql')
+if DATABASE_URL:
+    from urllib.parse import parse_qs, unquote, urlparse
 
-if DB_ENGINE_CHOICE == 'django.db.backends.mysql':
+    database_url = urlparse(DATABASE_URL)
+    database_query = parse_qs(database_url.query)
+
+    if database_url.scheme not in ('postgres', 'postgresql'):
+        raise ImproperlyConfigured(
+            'DATABASE_URL must use a postgres:// or postgresql:// scheme.'
+        )
+
+    ssl_mode = (
+        database_query.get('sslmode', ['require'])[0]
+        if database_query.get('sslmode')
+        else os.getenv('DB_SSLMODE', 'require')
+    )
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': database_url.path.lstrip('/') or os.getenv('DB_NAME', 'postgres'),
+            'USER': database_url.username or os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': unquote(database_url.password) if database_url.password else os.getenv('DB_PASSWORD', ''),
+            'HOST': database_url.hostname or os.getenv('DB_HOST', ''),
+            'PORT': str(database_url.port or os.getenv('DB_PORT', '5432')),
+            'OPTIONS': {'sslmode': ssl_mode},
+            'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '0')),
+        }
+    }
+elif DB_ENGINE_CHOICE in (
+    'django.db.backends.postgresql',
+    'django.db.backends.postgresql_psycopg2',
+):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'postgres'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', ''),
+            'PORT': os.getenv('DB_PORT', '5432'),
+            'OPTIONS': {'sslmode': os.getenv('DB_SSLMODE', 'require')},
+            'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '0')),
+        }
+    }
+elif DB_ENGINE_CHOICE == 'django.db.backends.mysql':
     # MySQL Configuration
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
             'NAME': os.getenv('DB_NAME', 'drseba_healthcare'),
             'USER': os.getenv('DB_USER', 'drseba_user'),
-            'PASSWORD': os.getenv('DB_PASSWORD', 'DrsebaPwd123!@#'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
             'HOST': os.getenv('DB_HOST', 'localhost'),
             'PORT': os.getenv('DB_PORT', '3306'),
             'OPTIONS': {

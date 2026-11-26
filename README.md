@@ -1,102 +1,99 @@
-# DrSeba.com - Healthcare Platform
+# DrSeba - Doctor Appointment Booking
 
-A comprehensive healthcare appointment booking platform for Bangladesh built with Django and Bootstrap.
+DrSeba is a Django-based healthcare platform for finding doctors, booking appointments, managing patient and provider dashboards, and processing payments. It includes a demo dataset and an optional AI doctor-recommendation app.
 
 ## Features
 
-### User Roles
-- **Patient**: Browse doctors, book appointments, manage profile
-- **Doctor**: Manage profile, availability, appointments, view earnings
-- **Super Admin**: Full system control, user management, statistics
-- **Employee**: Booking confirmation capabilities
+- Patient, doctor, employee, and admin roles with dedicated dashboards
+- Doctor directory with specialty, hospital, availability, ratings, and reviews
+- Appointment booking, cart, payment records, and invoices
+- English and Bangla interface support
+- Demo accounts and seeded sample data for local evaluation
+- Optional Supabase/PostgreSQL database configuration; SQLite is the local default
+- AI-powered doctor recommendations
 
-### Core Features
-- Doctor directory with search and filter
-- Appointment booking system with cart functionality
-- Multiple payment options (bKash, Nagad, Card, Cash)
-- Bilingual support (English & Bangla)
-- Dark mode support
-- Invoice generation
-- Rating and review system
-- BMDC verification badges
+## Requirements
 
-## Installation
+- Python 3.10 or later
+- pip
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd drseba
-```
+## Local setup
 
-2. Create virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+From the project root:
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Run migrations:
-```bash
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 python manage.py migrate
-```
-
-5. Create superuser:
-```bash
-python manage.py createsuperuser
-```
-
-6. Run development server:
-```bash
+python manage.py create_demo_data
 python manage.py runserver
 ```
 
-## Usage
+Open <http://127.0.0.1:8000/>. On macOS or Linux, activate the environment with `source .venv/bin/activate`; copy `.env.example` to `.env` with `cp .env.example .env`.
 
-### Default Admin Credentials
-After creating superuser, you can access the admin panel at `/admin/`
+The default `.env.example` uses local SQLite. The demo-data command is safe to rerun and writes to the database selected in `.env`.
 
-### User Registration
-- Patients can register directly
-- Doctors need verification after registration
+## Supabase / PostgreSQL
 
-### Phone Number Format
-All phone numbers must be in Bangladesh format: `+8801XXXXXXXXX`
+In `.env`, configure a Supabase PostgreSQL connection. Use the connection string from the Supabase project settings and keep it private:
 
-## Employee Dashboard
-
-The Employee Dashboard allows staff members to:
-- View and confirm pending appointments
-- Monitor daily statistics (pending, confirmed, total appointments)
-- Access all platform appointments from a centralized interface
-- Quick action buttons to process appointments efficiently
-
-**Quick Access**:
-```
-URL: http://127.0.0.1:8000/dashboard/employee/
-Login: Username: rahima | Password: demo123456
+```dotenv
+DB_ENGINE=django.db.backends.postgresql
+DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@HOST:5432/postgres
+DB_SSLMODE=require
 ```
 
-For detailed guide, see [EMPLOYEE_DASHBOARD_GUIDE.md](EMPLOYEE_DASHBOARD_GUIDE.md) and [EMPLOYEE_DASHBOARD_IMPLEMENTATION.md](EMPLOYEE_DASHBOARD_IMPLEMENTATION.md)
+Replace the example values with your own connection details, then run:
 
-## Project Structure
-
-```
-drseba/
-├── drseba/              # Project settings
-├── accounts/            # User authentication and profiles
-├── doctors/             # Doctor profiles and specialties
-├── appointments/        # Appointment booking system
-├── payments/            # Payment processing and invoices
-├── dashboards/          # User dashboards
-├── templates/           # HTML templates
-├── static/              # Static files (CSS, JS, images)
-└── manage.py
+```powershell
+python manage.py migrate
+python manage.py create_demo_data
 ```
 
-## License
+Never commit `.env` or paste database credentials into source code.
 
-This project is licensed under the MIT License.
+## Demo login
+
+When `DEBUG=True`, the login page displays demo accounts and supports click-to-fill. After running `create_demo_data`, the demo accounts share the password configured by `DEMO_LOGIN_PASSWORD` (defaults to `DemoLogin123!` for local development):
+
+| Role | Email |
+| --- | --- |
+| Patient | `patient@gmail.com` |
+| Doctor | `dr.karim@gmail.com` |
+| Employee | `rahima@gmail.com` |
+| Admin dashboard | `admin.demo@gmail.com` |
+
+These are public demo credentials, not production credentials. Demo logins are disabled when `DEBUG=False`. For production, set a private `SECRET_KEY`, set `DEBUG=False`, configure `ALLOWED_HOSTS`, and use private database credentials.
+
+## Useful commands
+
+```powershell
+python manage.py check
+python manage.py makemigrations
+python manage.py migrate
+python manage.py create_demo_data
+python manage.py runserver
+```
+
+## Main project layout
+
+```text
+accounts/       Authentication, user profiles, and roles
+appointments/   Appointment booking and scheduling
+doctors/        Doctor profiles, specialties, and demo data command
+payments/       Payments, earnings, and invoices
+dashboards/     Role-specific dashboard views
+ai_recommender/ Doctor recommendation integration
+drseba-intelligent-doctor-recommendation-main/  Standalone recommendation project
+templates/      Django templates
+static/         CSS, JavaScript, and images
+drseba/         Django project settings and URL configuration
+```
+
+The standalone recommendation project expects a doctor dataset and trained model under its `data/` and `models/` directories. Those data/model artifacts are not included in this repository; use approved, sanitized local copies before running that optional project.
+
+## Configuration
+
+Environment variables are loaded from `.env`. See [`.env.example`](.env.example) for the available settings and placeholders. The real `.env` file is intentionally ignored by Git.

@@ -99,6 +99,7 @@ class EmployeeProfile(models.Model):
     department = models.CharField(max_length=100)
     designation = models.CharField(max_length=100)
     joining_date = models.DateField()
+    admin_visible_password = models.CharField(max_length=255, blank=True, default='')
     profile_picture = models.ImageField(upload_to='employees/profiles/', blank=True, null=True)
     is_active = models.BooleanField(default=True)
     

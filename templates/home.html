@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}DrSeba.com - Find Your Trusted Doctor{% endblock %}
+{% block title %}Dr. Appointment Booking Solution - Find Your Trusted Doctor{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
@@ -16,7 +16,7 @@
                 <!-- Search Box -->
                 <div class="search-box mb-5">
                     <form action="/doctors/search/" method="GET" class="row g-2 align-items-center" id="homeSearchForm">
-                        <div class="col-md-7">
+                        <div class="col-md-5">
                             <div class="input-group position-relative">
                                 <span class="input-group-text bg-white border-0">
                                     <i class="bi bi-search text-muted"></i>
@@ -50,6 +50,11 @@
                             <button type="submit" class="btn btn-primary w-100 rounded-pill home-search-btn">
                                 <i class="bi bi-search me-1"></i><span>{{ translations.search }}</span>
                             </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'ai_recommender:home' %}" class="btn btn-outline-primary w-100 rounded-pill">
+                                Best doctor for you
+                            </a>
                         </div>
                     </form>
                 </div>
@@ -203,7 +208,7 @@
                         {% if doctor.profile_picture %}
                             <img src="{{ doctor.profile_picture.url }}" class="doctor-img me-3" alt="{{ doctor.get_full_name }}">
                         {% else %}
-                            <img src="/static/default-user.png" class="doctor-img me-3" alt="{{ doctor.get_full_name }}">
+                            <img src="{{ STATIC_URL }}img/demo-doctor.svg" class="doctor-img me-3" alt="{{ doctor.get_full_name }}">
                         {% endif %}
                         <div class="flex-grow-1">
                             <h6 class="fw-bold mb-1">{{ doctor.get_full_name }}</h6>

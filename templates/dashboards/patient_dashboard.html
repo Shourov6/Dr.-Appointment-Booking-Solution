@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Patient Dashboard - DrSeba.com{% endblock %}
+{% block title %}Patient Dashboard - Dr. Appointment Booking Solution{% endblock %}
 
 {% block content %}
 <div class="container-fluid" style="background-color: #f8f9fa; min-height: 100vh;">
@@ -13,7 +13,7 @@
                     <div class="d-flex align-items-center">
                         <div class="bg-primary rounded d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px; font-weight: bold; color: white;">DS</div>
                         <div>
-                            <h6 class="mb-0 fw-bold">DrSeba.com</h6>
+                            <h6 class="mb-0 fw-bold">Dr. Appointment Booking Solution</h6>
                             <small class="text-muted">Patient Portal</small>
                         </div>
                     </div>
@@ -25,9 +25,7 @@
                         {% if profile.profile_picture %}
                             <img src="{{ profile.profile_picture.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="">
                         {% else %}
-                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
-                                <span class="fw-bold text-primary">P</span>
-                            </div>
+                            <img src="{{ STATIC_URL }}img/default-user.png" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="Demo patient avatar">
                         {% endif %}
                         <div>
                             <h6 class="mb-0 small fw-bold">{{ user.first_name }} {{ user.last_name }}</h6>
@@ -49,6 +47,9 @@
                     </a>
                     <a class="nav-link px-3 py-2 rounded tab-link text-dark" href="#" data-tab="payments">
                         <i class="bi bi-credit-card me-2"></i>Payments
+                    </a>
+                    <a class="nav-link px-3 py-2 rounded tab-link text-dark" href="#" data-tab="cart">
+                        <i class="bi bi-cart3 me-2"></i>Cart
                     </a>
                     <a class="nav-link px-3 py-2 rounded tab-link text-dark" href="#" data-tab="profile">
                         <i class="bi bi-person me-2"></i>My Profile
@@ -181,9 +182,7 @@
                                             {% if appt.doctor.profile_picture %}
                                             <img src="{{ appt.doctor.profile_picture.url }}" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ appt.doctor.user.get_full_name }}" style="object-fit: cover;">
                                             {% else %}
-                                            <div class="bg-light rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 70px; height: 70px; min-width: 70px;">
-                                                <i class="bi bi-person fs-3 text-muted"></i>
-                                            </div>
+                                            <img src="{{ STATIC_URL }}img/demo-doctor.svg" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ appt.doctor.user.get_full_name }}" style="object-fit: cover;">
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="fw-bold mb-1" style="color: #1F2937;">Dr. {{ appt.doctor.user.get_full_name }}</h6>
@@ -241,9 +240,7 @@
                                             {% if appt.doctor.profile_picture %}
                                             <img src="{{ appt.doctor.profile_picture.url }}" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ appt.doctor.user.get_full_name }}" style="object-fit: cover;">
                                             {% else %}
-                                            <div class="bg-light rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 70px; height: 70px; min-width: 70px;">
-                                                <i class="bi bi-person fs-3 text-muted"></i>
-                                            </div>
+                                            <img src="{{ STATIC_URL }}img/demo-doctor.svg" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ appt.doctor.user.get_full_name }}" style="object-fit: cover;">
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="fw-bold mb-1" style="color: #1F2937;">Dr. {{ appt.doctor.user.get_full_name }}</h6>
@@ -302,9 +299,7 @@
                                             {% if doctor.profile_picture %}
                                             <img src="{{ doctor.profile_picture.url }}" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ doctor.user.get_full_name }}" style="object-fit: cover;">
                                             {% else %}
-                                            <div class="bg-light rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 70px; height: 70px; min-width: 70px;">
-                                                <i class="bi bi-person fs-3 text-muted"></i>
-                                            </div>
+                                            <img src="{{ STATIC_URL }}img/demo-doctor.svg" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ doctor.user.get_full_name }}" style="object-fit: cover;">
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="fw-bold mb-1" style="color: #1F2937;">Dr. {{ doctor.user.get_full_name }}</h6>
@@ -378,9 +373,13 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <a href="{% url 'payments:invoice' payment.id %}" class="btn btn-sm btn-outline-primary">
+                                            {% if payment.invoice_id_for_link %}
+                                            <a href="{% url 'payments:view_invoice' payment.invoice_id_for_link %}" class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-download"></i>
                                             </a>
+                                            {% else %}
+                                            <span class="text-muted small">N/A</span>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -393,6 +392,90 @@
                         <div class="card-body text-center py-5">
                             <i class="bi bi-credit-card fs-1 text-muted"></i>
                             <p class="mt-3 text-muted">No payment history</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- TAB: CART -->
+                <div class="tab-section" id="cart" style="display: none;">
+                    <h5 class="fw-bold mb-4">Your Cart</h5>
+                    {% if cart_items %}
+                        {% for item in cart_items %}
+                        <div class="card shadow-sm border-0 mb-3" style="border-left: 4px solid #0A74DA;">
+                            <div class="card-body p-4">
+                                <div class="row align-items-center">
+                                    <!-- Doctor Info -->
+                                    <div class="col-md-6">
+                                        <div class="d-flex">
+                                            {% if item.doctor.profile_picture %}
+                                            <img src="{{ item.doctor.profile_picture.url }}" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ item.doctor.user.get_full_name }}" style="object-fit: cover;">
+                                            {% else %}
+                                            <img src="{{ STATIC_URL }}img/demo-doctor.svg" class="rounded-2 me-3" width="70" height="70" alt="Dr. {{ item.doctor.user.get_full_name }}" style="object-fit: cover;">
+                                            {% endif %}
+                                            <div class="flex-grow-1">
+                                                <h6 class="fw-bold mb-1" style="color: #1F2937;">Dr. {{ item.doctor.user.get_full_name }}</h6>
+                                                <small class="text-muted d-block mb-2">{{ item.doctor.specialties.first.name|default:"General" }}</small>
+                                                <div>
+                                                    <small class="text-muted"><i class="bi bi-calendar me-1"></i>{{ item.date|date:"M d, Y" }}</small>
+                                                    <small class="text-muted ms-3"><i class="bi bi-clock me-1"></i>{{ item.time_slot }}</small>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ item.hospital.name }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fee -->
+                                    <div class="col-md-3 text-center">
+                                        <div class="small">
+                                            <small class="d-block text-muted mb-1">Fee</small>
+                                            <span class="fw-bold" style="color: #0A74DA;">৳{{ item.consultation_fee }}</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div class="col-md-3 text-end">
+                                        <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                            <a href="{% url 'appointments:book_doctor' item.doctor.id %}?step=1&hospital={{ item.hospital.id }}&date={{ item.date|date:'Y-m-d' }}&time={{ item.time_slot }}" class="btn btn-sm btn-outline-primary" style="white-space: nowrap;">
+                                                <i class="bi bi-pencil me-1"></i>Edit
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart({{ item.id }})" style="white-space: nowrap;">
+                                                <i class="bi bi-trash me-1"></i>Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Cart Summary and Checkout -->
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-4">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h6 class="fw-bold mb-2">Cart Summary</h6>
+                                        <p class="text-muted mb-0">{{ cart_items|length }} appointment{{ cart_items|length|pluralize }} in cart</p>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <div class="mb-2">
+                                            <span class="fw-bold" style="color: #0A74DA; font-size: 1.1rem;">Total: ৳{{ cart_total }}</span>
+                                        </div>
+                                        <a href="{% url 'appointments:checkout' %}" class="btn btn-primary" style="background-color: #0A74DA; border-color: #0A74DA;">
+                                            <i class="bi bi-credit-card me-2"></i>Checkout
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-cart3 fs-1 text-muted"></i>
+                            <p class="mt-3 text-muted">Your cart is empty</p>
+                            <a href="{% url 'doctors:list' %}" class="btn btn-primary" style="background-color: #0A74DA; border-color: #0A74DA;">Find Doctors</a>
                         </div>
                     </div>
                     {% endif %}
@@ -450,9 +533,7 @@
                                     {% if profile.profile_picture %}
                                     <img src="{{ profile.profile_picture.url }}" class="rounded-circle mb-3" width="100" height="100" alt="">
                                     {% else %}
-                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 100px; height: 100px;">
-                                        <i class="bi bi-person fs-1 text-muted"></i>
-                                    </div>
+                                    <img src="{{ STATIC_URL }}img/default-user.png" class="rounded-circle mx-auto mb-3" width="100" height="100" alt="Demo patient avatar">
                                     {% endif %}
                                     <h6 class="fw-bold">{{ user.get_full_name }}</h6>
                                     <p class="text-muted small mb-3">Patient Account</p>
@@ -495,5 +576,30 @@ document.querySelectorAll('.tab-link').forEach(link => {
         this.style.color = 'white';
     });
 });
+
+// Remove from cart functionality
+function removeFromCart(itemId) {
+    if (confirm('Are you sure you want to remove this item from your cart?')) {
+        fetch(`/appointments/cart/remove/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error removing item from cart');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error removing item from cart');
+        });
+    }
+}
 </script>
 {% endblock %}

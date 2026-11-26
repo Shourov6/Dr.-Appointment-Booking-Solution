@@ -74,14 +74,14 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(
-                    self.style.SUCCESS(f'✓ Created specialty: {specialty.name}')
+                    self.style.SUCCESS(f'Created specialty: {specialty.name}')
                 )
                 created_count += 1
             else:
                 self.stdout.write(
-                    self.style.WARNING(f'⊘ Already exists: {specialty.name}')
+                    self.style.WARNING(f'Already exists: {specialty.name}')
                 )
 
         self.stdout.write(
-            self.style.SUCCESS(f'\n✓ Successfully created {created_count} specialties!')
+            self.style.SUCCESS(f'\nSuccessfully created {created_count} specialties!')
         )
